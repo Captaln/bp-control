@@ -124,23 +124,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <Flame size={36} className="text-white animate-pulse" />
       </button>
 
-      {/* Today's Mood Status */}
-      {moodData && (
-        <div className="w-full bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-green-400 to-teal-500 flex items-center justify-center">
-              <Activity size={20} className="text-white" />
-            </div>
-            <div>
-              <p className="text-slate-500 dark:text-slate-400 text-xs">Today's Status</p>
-              <p className="text-slate-800 dark:text-white font-bold">
+      {/* Today's Mood Status - Always Visible */}
+      <div className="w-full bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-cyan-500 flex items-center justify-center">
+            <Activity size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="text-slate-800 dark:text-white font-bold text-sm">Today's Status</p>
+            {moodData ? (
+              <p className="text-slate-500 dark:text-slate-400 text-xs">
                 Avg: {moodData.avg.toFixed(1)}/10 • {moodData.count} {moodData.count === 1 ? 'entry' : 'entries'}
               </p>
-            </div>
+            ) : (
+              <p className="text-slate-400 dark:text-slate-500 text-xs">Track your first mood</p>
+            )}
           </div>
-          <button onClick={() => onNavigate(AppView.TRACK)} className="text-xs text-primary font-bold">View →</button>
         </div>
-      )}
+        {moodData ? (
+          <button onClick={() => onNavigate(AppView.TRACK)} className="text-xs text-primary font-bold">View →</button>
+        ) : (
+          <span className="text-xs text-slate-400 font-medium">No Data Yet</span>
+        )}
+      </div>
 
       {/* Apps Grid */}
       <div className="grid grid-cols-2 gap-3 w-full mb-6">
