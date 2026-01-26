@@ -7,8 +7,22 @@ export const config = {
 };
 
 export default async function handler(req) {
+    // CORS Headers
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { status: 200, headers: corsHeaders });
+    }
+
     if (req.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+            status: 405,
+            headers: corsHeaders
+        });
     }
 
     try {
@@ -31,11 +45,20 @@ export default async function handler(req) {
         const text = result.response.text();
 
         return new Response(JSON.stringify({ text }), {
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
         });
 
     } catch (error) {
         console.error('Gemini API Error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to generate response', details: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ error: 'Failed to generate response', details: error.message }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
     }
 }
