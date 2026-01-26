@@ -10,13 +10,6 @@ import { AppView } from './types';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
-  const [apiKeySet, setApiKeySet] = useState(false);
-
-  useEffect(() => {
-    if (process.env.API_KEY) {
-      setApiKeySet(true);
-    }
-  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -36,15 +29,6 @@ function App() {
         return <Dashboard onNavigate={setCurrentView} />;
     }
   };
-
-  if (!apiKeySet) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center p-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">API Key Required</h1>
-        <p>Please ensure the API_KEY environment variable is set to use the AI features of BP Control.</p>
-      </div>
-    )
-  }
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-900 relative max-w-md mx-auto shadow-2xl overflow-hidden">
