@@ -37,9 +37,7 @@ export const Smile = () => {
     const [loading, setLoading] = useState(true);
     const [reportId, setReportId] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState('all');
-    const [currentIndex, setCurrentIndex] = useState(0);
 
-    const containerRef = useRef<HTMLDivElement>(null);
     const hasFetched = useRef(false);
 
     const fetchFeed = useCallback(async (force = false) => {
@@ -68,7 +66,6 @@ export const Smile = () => {
 
     const handleCategoryChange = (cat: string) => {
         setActiveCategory(cat);
-        setCurrentIndex(0);
         if (cat === 'all') {
             setFilteredItems(allItems);
         } else {
@@ -102,41 +99,16 @@ export const Smile = () => {
         } catch (err) { }
     };
 
-    const goNext = () => {
-        if (currentIndex < filteredItems.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-        }
-    };
-
-    const goPrev = () => {
-        if (currentIndex > 0) {
-            setCurrentIndex(prev => prev - 1);
-        }
-    };
-
-    const currentItem = filteredItems[currentIndex];
-
     return (
-        <div className="bg-black w-full h-full relative overflow-hidden">
+        <div className="bg-black w-full h-full relative">
 
-            {/* FULL SCREEN CONTENT FIRST */}
+            {/* SCROLLABLE FEED */}
             <div
-                ref={containerRef}
-                className="absolute inset-0"
-                onTouchStart={(e) => {
-                    const touch = e.touches[0];
-                    (containerRef.current as any).startY = touch.clientY;
-                }}
-                onTouchEnd={(e) => {
-                    const touch = e.changedTouches[0];
-                    const startY = (containerRef.current as any).startY || 0;
-                    const diff = startY - touch.clientY;
-                    if (diff > 50) goNext();
-                    if (diff < -50) goPrev();
-                }}
+                className="w-full h-full overflow-y-auto scroll-smooth"
+                style={{ scrollSnapType: 'y mandatory' }}
             >
                 {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center z-30">
+                    <div className="h-full flex items-center justify-center">
                         <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent"></div>
                     </div>
                 )}
@@ -147,36 +119,24 @@ export const Smile = () => {
                     </div>
                 )}
 
-                {currentItem && (
-                    <div className="w-full h-full">
-                        {/* Media - Full Screen */}
-                        {currentItem.type === 'video' ? (
-                            <VideoPlayer src={currentItem.url} />
-                        ) : (
-                            <img
-                                src={currentItem.url}
-                                alt="Meme"
-                                className="w-full h-full object-cover"
-                            />
-                        )}
-                    </div>
-                )}
+                {filteredItems.map((item) => (
+                    <FeedCard
+                        key={item.id}
+                        item={item}
+                        onShare={() => handleShare(item)}
+                        onReport={() => setReportId(item.id)}
+                    />
+                ))}
             </div>
 
-            {/* TOP GRADIENT for readability */}
-            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            {/* FLOATING HEADER */}
+            <div className="absolute top-0 left-0 right-0 z-20 pt-3 px-4">
+                {/* Top Gradient for readability */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" style={{ height: '120px', top: 0, left: 0, right: 0, position: 'fixed' }} />
 
-            {/* BOTTOM GRADIENT */}
-            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
-
-            {/* FLOATING HEADER - On top of content */}
-            <div className="absolute top-0 left-0 right-0 z-20 pt-4 px-4 safe-area-top">
-                <div className="flex justify-between items-center mb-3">
-                    <h1 className="text-white font-black tracking-tight text-lg drop-shadow-lg">DAILY SMILE</h1>
-                    <div className="flex items-center gap-2">
-                        <span className="text-white/70 text-xs font-bold bg-black/30 backdrop-blur-md px-2 py-1 rounded-full">
-                            {currentIndex + 1}/{filteredItems.length}
-                        </span>
+                <div className="relative z-10">
+                    <div className="flex justify-between items-center mb-2">
+                        <h1 className="text-white font-black tracking-tight text-lg drop-shadow-lg">DAILY SMILE</h1>
                         <button
                             onClick={() => fetchFeed(true)}
                             className="bg-black/30 backdrop-blur-md p-2 rounded-full active:bg-white/30 transition"
@@ -184,57 +144,24 @@ export const Smile = () => {
                             <RotateCcw className="text-white" size={16} />
                         </button>
                     </div>
-                </div>
 
-                {/* Category Tabs - Glassmorphism */}
-                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => handleCategoryChange(cat)}
-                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition backdrop-blur-md ${activeCategory === cat
-                                    ? 'bg-white/90 text-black shadow-lg'
-                                    : 'bg-black/40 text-white/90 border border-white/20'
-                                }`}
-                        >
-                            {cat === 'all' ? '🔥 All' : `#${cat}`}
-                        </button>
-                    ))}
+                    {/* Glass Category Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {CATEGORIES.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => handleCategoryChange(cat)}
+                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition backdrop-blur-md ${activeCategory === cat
+                                        ? 'bg-white/90 text-black shadow-lg'
+                                        : 'bg-black/40 text-white/90 border border-white/20'
+                                    }`}
+                            >
+                                {cat === 'all' ? '🔥 All' : `#${cat}`}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
-
-            {/* FLOATING BOTTOM UI */}
-            {currentItem && (
-                <>
-                    {/* Bottom Left Info */}
-                    <div className="absolute bottom-20 left-4 z-20 pointer-events-none">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white shadow-lg"></div>
-                            <p className="text-white font-bold text-sm drop-shadow-lg">@bp_control</p>
-                        </div>
-                        <p className="text-white text-sm font-medium drop-shadow-lg">
-                            {getTagDisplay(currentItem.id)} <span className="text-white/60">#trending</span>
-                        </p>
-                    </div>
-
-                    {/* Right Action Buttons */}
-                    <div className="absolute bottom-20 right-4 z-20 flex flex-col items-center gap-5">
-                        <button onClick={() => handleShare(currentItem)} className="flex flex-col items-center gap-1">
-                            <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
-                                <Share2 size={24} className="text-white" />
-                            </div>
-                            <span className="text-white text-[10px] font-bold drop-shadow-lg">Share</span>
-                        </button>
-
-                        <button onClick={() => setReportId(currentItem.id)} className="flex flex-col items-center gap-1">
-                            <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
-                                <AlertTriangle size={22} className="text-white/80" />
-                            </div>
-                            <span className="text-white/80 text-[10px] font-bold drop-shadow-lg">Report</span>
-                        </button>
-                    </div>
-                </>
-            )}
 
             {/* Report Modal */}
             <AnimatePresence>
@@ -262,15 +189,83 @@ export const Smile = () => {
     );
 };
 
-const VideoPlayer = ({ src }: { src: string }) => {
+// Individual Feed Card with scroll snap
+const FeedCard = ({ item, onShare, onReport }: { item: FeedItem, onShare: () => void, onReport: () => void }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(([e]) => setIsVisible(e.isIntersecting), { threshold: 0.6 });
+        if (ref.current) observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div
+            ref={ref}
+            className="w-full relative"
+            style={{
+                height: '100vh',
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always'
+            }}
+        >
+            {/* Media */}
+            <div className="w-full h-full flex items-center justify-center bg-black">
+                {item.type === 'video' ? (
+                    <VideoPlayer src={item.url} isVisible={isVisible} />
+                ) : (
+                    <img src={item.url} alt="Meme" className="w-full h-full object-cover" />
+                )}
+            </div>
+
+            {/* Bottom Gradient */}
+            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+
+            {/* Bottom Left Info */}
+            <div className="absolute bottom-20 left-4 z-10 pointer-events-none">
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white shadow-lg"></div>
+                    <p className="text-white font-bold text-sm drop-shadow-lg">@bp_control</p>
+                </div>
+                <p className="text-white text-sm font-medium drop-shadow-lg">
+                    {getTagDisplay(item.id)} <span className="text-white/60">#trending</span>
+                </p>
+            </div>
+
+            {/* Right Action Buttons */}
+            <div className="absolute bottom-20 right-4 z-10 flex flex-col items-center gap-5">
+                <button onClick={onShare} className="flex flex-col items-center gap-1">
+                    <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
+                        <Share2 size={24} className="text-white" />
+                    </div>
+                    <span className="text-white text-[10px] font-bold drop-shadow-lg">Share</span>
+                </button>
+
+                <button onClick={onReport} className="flex flex-col items-center gap-1">
+                    <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
+                        <AlertTriangle size={22} className="text-white/80" />
+                    </div>
+                    <span className="text-white/80 text-[10px] font-bold drop-shadow-lg">Report</span>
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isMuted, setIsMuted] = useState(true);
 
     useEffect(() => {
         if (videoRef.current) {
-            videoRef.current.play().catch(() => { });
+            if (isVisible) {
+                videoRef.current.play().catch(() => { });
+            } else {
+                videoRef.current.pause();
+            }
         }
-    }, [src]);
+    }, [isVisible]);
 
     return (
         <div className="w-full h-full flex items-center justify-center bg-black relative" onClick={() => setIsMuted(!isMuted)}>
@@ -281,7 +276,6 @@ const VideoPlayer = ({ src }: { src: string }) => {
                 loop
                 muted={isMuted}
                 playsInline
-                autoPlay
             />
             {isMuted && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm p-3 rounded-full pointer-events-none">
@@ -290,4 +284,12 @@ const VideoPlayer = ({ src }: { src: string }) => {
             )}
         </div>
     );
+};
+
+const getTagDisplay = (id: string) => {
+    const parts = id.split('-');
+    if (parts.length > 1 && isNaN(Number(parts[0]))) {
+        return `#${parts[0]}`;
+    }
+    return '#viral';
 };
