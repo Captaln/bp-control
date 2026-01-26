@@ -325,7 +325,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
 
             <div className="mt-6 text-center">
-              <p className="text-[10px] text-slate-300">BP Control v1.0.1</p>
+              <p className="text-[10px] text-slate-300">BP Control v1.0.5 (Build: {new Date().toLocaleTimeString()})</p>
             </div>
           </div>
         </div>

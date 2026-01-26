@@ -10,7 +10,9 @@ const API_BASE_URL = Capacitor.isNativePlatform()
 
 const safeFetch = async (endpoint: string, method: string, body?: any) => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Add timestamp to prevent caching
+    const url = `${API_BASE_URL}${endpoint}?t=${Date.now()}`;
+    const response = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
