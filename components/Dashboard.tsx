@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AppView, MoodLog } from '../types';
-import { Flame, Activity, BarChart2, Play, Smile, Gamepad2, Settings, Trash2, Database, X, AlertTriangle, CheckCircle2, Shield, Mail } from 'lucide-react';
+import { Flame, Activity, BarChart2, Play, Smile, Gamepad2, Settings, Trash2, Database, X, AlertTriangle, CheckCircle2, Shield, Mail, Lock } from 'lucide-react';
 
 interface DashboardProps {
   onNavigate: (view: AppView) => void;
@@ -219,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <div className="w-full mb-4">
         <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 ml-1">Trending Now 🔥</h3>
         <div
-          onClick={() => onNavigate(AppView.LAUGH)}
+          onClick={() => onNavigate(AppView.SMILE)}
           className="bg-white dark:bg-slate-800 rounded-2xl p-3 shadow-md border border-slate-100 dark:border-slate-700 flex items-center gap-4 cursor-pointer active:scale-95 transition"
         >
           <div className="h-16 w-16 bg-slate-200 dark:bg-slate-700 rounded-xl overflow-hidden relative flex-shrink-0">
