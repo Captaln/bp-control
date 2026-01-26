@@ -110,10 +110,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const config = moodData ? getMoodConfig(moodData.avg) : { color: 'bg-slate-200', width: '5%', text: 'No Data Yet', subtext: 'Track your first mood.' };
 
+  const [adminTaps, setAdminTaps] = useState(0);
+
+  const handleHeaderTap = () => {
+    const newTaps = adminTaps + 1;
+    setAdminTaps(newTaps);
+    if (newTaps === 7) {
+      showToast("🕵️ Secret Admin Mode Unlocked!");
+      onNavigate(AppView.ADMIN);
+      setAdminTaps(0);
+    }
+  };
+
   return (
     <div className="h-full w-full p-6 flex flex-col justify-start items-center overflow-y-auto pb-24 relative">
       <header className="w-full mt-4 mb-8 flex justify-between items-start">
-        <div>
+        <div onClick={handleHeaderTap} className="cursor-pointer select-none active:opacity-70 transition">
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white">BP Control</h1>
           <p className="text-slate-500 dark:text-slate-400">How is your pressure today?</p>
         </div>
@@ -262,14 +274,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <div className="text-left flex-1">
                   <p className="font-bold text-slate-700 text-sm">Clear Chat History</p>
                   <p className="text-xs text-slate-400">Delete all messages</p>
-                </div>
-              </button>
-
-              <button onClick={() => { setShowSettings(false); onNavigate(AppView.ADMIN); }} className="w-full p-4 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition">
-                <div className="p-2 bg-white rounded-lg text-slate-600 shadow-sm"><Lock size={20} /></div>
-                <div className="text-left flex-1">
-                  <p className="font-bold text-slate-700 text-sm">Admin Panel</p>
-                  <p className="text-xs text-slate-400">Manage Feed</p>
                 </div>
               </button>
 

@@ -32,11 +32,11 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
     }, [isVisible]);
 
     return (
-        <div className="relative w-full h-full bg-black flex items-center justify-center">
+        <div className="relative w-full h-full flex items-center justify-center bg-black">
             <video
                 ref={videoRef}
                 src={src}
-                className="w-full h-auto max-h-[600px] object-contain"
+                className="w-full h-auto max-h-[85vh]"
                 loop
                 muted={isMuted}
                 playsInline
@@ -85,7 +85,7 @@ const FeedCard = ({ item, isVisible }: { item: FeedItem, isVisible: boolean }) =
 
             {/* Content */}
             <div
-                className="w-full min-h-[300px] bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden"
+                className="w-full bg-black flex items-center justify-center relative min-h-[300px]"
                 onClick={handleDoubleTap}
             >
                 {item.type === 'video' ? (
@@ -95,7 +95,7 @@ const FeedCard = ({ item, isVisible }: { item: FeedItem, isVisible: boolean }) =
                         src={item.url}
                         alt="Meme"
                         loading="lazy"
-                        className="w-full h-auto max-h-[600px] object-contain"
+                        className="w-full h-auto object-contain max-h-[85vh]"
                     />
                 )}
             </div>
