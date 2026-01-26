@@ -36,7 +36,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate 
         <BarChart2 size={22} />
         <span className="text-[10px] font-medium">Track</span>
       </button>
-      <button onClick={() => onNavigate(AppView.LAUGH)} className={getButtonClass(AppView.LAUGH)}>
+      <button onClick={() => onNavigate(AppView.SMILE)} className={getButtonClass(AppView.SMILE)}>
         <Smile size={22} />
         <span className="text-[10px] font-medium">Smile</span>
       </button>

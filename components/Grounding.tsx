@@ -58,9 +58,13 @@ export const Grounding: React.FC<GroundingProps> = ({ onBack }) => {
   const [itemsFound, setItemsFound] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
 
-  const step = STEPS[currentStepIndex];
+  // Safety check to prevent crash if index goes out of bounds during rapid clicks
+  const step = STEPS[currentStepIndex] || STEPS[0];
 
   const handleFound = () => {
+    // Prevent interaction if already completed or safety check failed
+    if (isCompleted || !STEPS[currentStepIndex]) return;
+
     // Vibrate for feedback
     if (navigator.vibrate) navigator.vibrate(20);
 
@@ -70,8 +74,13 @@ export const Grounding: React.FC<GroundingProps> = ({ onBack }) => {
         setIsCompleted(true);
       } else {
         setTimeout(() => {
-            setCurrentStepIndex(prev => prev + 1);
-            setItemsFound(0);
+          setCurrentStepIndex(prev => {
+            // Double check bounds inside timeout
+            if (prev + 1 < STEPS.length) return prev + 1;
+            setIsCompleted(true);
+            return prev;
+          });
+          setItemsFound(0);
         }, 300);
       }
     } else {
@@ -82,21 +91,21 @@ export const Grounding: React.FC<GroundingProps> = ({ onBack }) => {
   const Icon = step.icon;
 
   if (isCompleted) {
-      return (
-        <div className="h-full w-full bg-slate-50 flex flex-col p-6 items-center justify-center text-center">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in">
-                <Check size={48} className="text-green-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">You are here.</h2>
-            <p className="text-slate-500 mb-8 max-w-xs">Great job grounding yourself in the present moment.</p>
-            <button 
-                onClick={onBack}
-                className="px-8 py-3 bg-slate-800 text-white rounded-xl font-bold shadow-lg hover:bg-slate-700 transition"
-            >
-                Back to Play
-            </button>
+    return (
+      <div className="h-full w-full bg-slate-50 flex flex-col p-6 items-center justify-center text-center">
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in">
+          <Check size={48} className="text-green-600" />
         </div>
-      );
+        <h2 className="text-3xl font-bold text-slate-800 mb-2">You are here.</h2>
+        <p className="text-slate-500 mb-8 max-w-xs">Great job grounding yourself in the present moment.</p>
+        <button
+          onClick={onBack}
+          className="px-8 py-3 bg-slate-800 text-white rounded-xl font-bold shadow-lg hover:bg-slate-700 transition"
+        >
+          Back to Play
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -104,42 +113,42 @@ export const Grounding: React.FC<GroundingProps> = ({ onBack }) => {
       {/* Header */}
       <div className="flex justify-between items-center w-full mb-8 z-10">
         <button onClick={onBack} className="p-2 -ml-2 text-slate-500 hover:text-slate-800">
-            <ChevronLeft size={24} />
+          <ChevronLeft size={24} />
         </button>
         <div className="flex gap-1">
-             {STEPS.map((_, i) => (
-                 <div key={i} className={`h-1.5 w-6 rounded-full transition-colors ${i <= currentStepIndex ? 'bg-primary' : 'bg-slate-200'}`}></div>
-             ))}
+          {STEPS.map((_, i) => (
+            <div key={i} className={`h-1.5 w-6 rounded-full transition-colors ${i <= currentStepIndex ? 'bg-primary' : 'bg-slate-200'}`}></div>
+          ))}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center max-w-sm mx-auto w-full animate-in slide-in-from-right duration-300" key={currentStepIndex}>
-         <div className={`w-32 h-32 ${step.bg} rounded-full flex items-center justify-center mb-8 shadow-sm`}>
-             <Icon size={64} className={step.color} strokeWidth={1.5} />
-         </div>
-         
-         <h2 className="text-4xl font-bold text-slate-800 mb-2">{step.count}</h2>
-         <h3 className="text-xl font-bold text-slate-700 mb-4 uppercase tracking-wide">{step.title}</h3>
-         <p className="text-center text-slate-600 font-medium text-lg mb-2">{step.desc}</p>
-         <p className="text-center text-slate-400 text-sm italic mb-12 h-10">{step.examples}</p>
+        <div className={`w-32 h-32 ${step.bg} rounded-full flex items-center justify-center mb-8 shadow-sm`}>
+          <Icon size={64} className={step.color} strokeWidth={1.5} />
+        </div>
 
-         {/* Interactive Counter Buttons */}
-         <div className="flex gap-3 mb-8">
-             {Array.from({ length: step.count }).map((_, i) => (
-                 <div 
-                    key={i} 
-                    className={`w-4 h-4 rounded-full transition-all duration-300 ${i < itemsFound ? `${step.bg.replace('100', '500')} scale-110` : 'bg-slate-200'}`}
-                 ></div>
-             ))}
-         </div>
+        <h2 className="text-4xl font-bold text-slate-800 mb-2">{step.count}</h2>
+        <h3 className="text-xl font-bold text-slate-700 mb-4 uppercase tracking-wide">{step.title}</h3>
+        <p className="text-center text-slate-600 font-medium text-lg mb-2">{step.desc}</p>
+        <p className="text-center text-slate-400 text-sm italic mb-12 h-10">{step.examples}</p>
 
-         <button
-            onClick={handleFound}
-            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition transform active:scale-95 bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50`}
-         >
-             I Found One
-         </button>
+        {/* Interactive Counter Buttons */}
+        <div className="flex gap-3 mb-8">
+          {Array.from({ length: step.count }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-4 h-4 rounded-full transition-all duration-300 ${i < itemsFound ? `${step.bg.replace('100', '500')} scale-110` : 'bg-slate-200'}`}
+            ></div>
+          ))}
+        </div>
+
+        <button
+          onClick={handleFound}
+          className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition transform active:scale-95 bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50`}
+        >
+          I Found One
+        </button>
       </div>
     </div>
   );

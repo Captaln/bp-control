@@ -265,6 +265,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </div>
               </button>
 
+              <button onClick={() => { setShowSettings(false); onNavigate(AppView.ADMIN); }} className="w-full p-4 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition">
+                <div className="p-2 bg-white rounded-lg text-slate-600 shadow-sm"><Lock size={20} /></div>
+                <div className="text-left flex-1">
+                  <p className="font-bold text-slate-700 text-sm">Admin Panel</p>
+                  <p className="text-xs text-slate-400">Manage Feed</p>
+                </div>
+              </button>
+
               <button onClick={() => handleClearData('mood')} className="w-full p-4 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition">
                 <div className="p-2 bg-white rounded-lg text-slate-600 shadow-sm"><Activity size={20} /></div>
                 <div className="text-left flex-1">
@@ -317,15 +325,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 size={16} className="text-green-400" />
-          <span className="text-sm font-medium">{toastMessage}</span>
-        </div>
-      )}
-    </div>
+      {
+        toastMessage && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 size={16} className="text-green-400" />
+            <span className="text-sm font-medium">{toastMessage}</span>
+          </div>
+        )
+      }
+    </div >
   );
 };
