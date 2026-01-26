@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
-import { Vent } from './components/Vent';
+import { GlobalChat } from './components/GlobalChat';
 import { Breathe } from './components/Breathe';
 import { Laugh } from './components/Laugh';
 import { Play } from './components/Play';
@@ -45,7 +45,7 @@ function App() {
       case AppView.DASHBOARD:
         return <Dashboard onNavigate={setCurrentView} />;
       case AppView.VENT:
-        return <Vent />;
+        return <GlobalChat />;
       case AppView.BREATHE:
         return <Breathe />;
       case AppView.PLAY:
