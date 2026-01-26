@@ -115,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       {/* Emergency Button */}
       <button
         onClick={() => onNavigate(AppView.VENT)}
-        className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl p-5 shadow-lg flex items-center justify-between mb-6 active:scale-95 transition"
+        className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl p-5 shadow-lg flex items-center justify-between mb-4 active:scale-95 transition"
       >
         <div className="text-left">
           <h2 className="text-xl font-bold">I'M MAD! 🤬</h2>
@@ -123,6 +123,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
         <Flame size={36} className="text-white animate-pulse" />
       </button>
+
+      {/* Today's Mood Status */}
+      {moodData && (
+        <div className="w-full bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-green-400 to-teal-500 flex items-center justify-center">
+              <Activity size={20} className="text-white" />
+            </div>
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-xs">Today's Status</p>
+              <p className="text-slate-800 dark:text-white font-bold">
+                Avg: {moodData.avg.toFixed(1)}/10 • {moodData.count} {moodData.count === 1 ? 'entry' : 'entries'}
+              </p>
+            </div>
+          </div>
+          <button onClick={() => onNavigate(AppView.TRACK)} className="text-xs text-primary font-bold">View →</button>
+        </div>
+      )}
 
       {/* Apps Grid */}
       <div className="grid grid-cols-2 gap-3 w-full mb-6">

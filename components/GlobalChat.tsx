@@ -33,7 +33,7 @@ export const GlobalChat: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [cooldown, setCooldown] = useState(0);
-    const [onlineCount, setOnlineCount] = useState(1);
+
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +53,7 @@ export const GlobalChat: React.FC = () => {
             )
             .subscribe();
 
-        // Fake online counter (random between 5-20)
-        setOnlineCount(Math.floor(Math.random() * 15) + 5);
+
 
         return () => {
             supabase.removeChannel(channel);
@@ -119,16 +118,13 @@ export const GlobalChat: React.FC = () => {
     };
 
     return (
-        <div className="h-full w-full flex flex-col bg-slate-950 pb-20">
+        <div className="h-full w-full flex flex-col bg-slate-950">
             {/* Header */}
             <div className="flex-shrink-0 bg-slate-900 border-b border-slate-800 p-4">
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-white font-bold text-lg">Global Vent Room</h1>
-                        <p className="text-slate-400 text-xs flex items-center gap-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            <Users size={12} /> {onlineCount} people venting
-                        </p>
+                        <p className="text-slate-400 text-xs">Anonymous chat • Be respectful</p>
                     </div>
                     <button
                         onClick={fetchMessages}
@@ -178,7 +174,7 @@ export const GlobalChat: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="flex-shrink-0 bg-slate-900 border-t border-slate-800 p-4">
+            <div className="flex-shrink-0 bg-slate-900 border-t border-slate-800 p-4 mb-16">
                 <div className="flex gap-2 items-center">
                     <input
                         ref={inputRef}
