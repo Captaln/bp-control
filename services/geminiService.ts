@@ -1,7 +1,12 @@
 import { Message, MoodLog } from "../types";
 
+import { Capacitor } from '@capacitor/core';
+
 // Secure API endpoint (Vercel)
-const API_BASE_URL = "https://bp-control.vercel.app/api";
+// Use full URL for Native App, relative path for Web (to handle Previews correctly)
+const API_BASE_URL = Capacitor.isNativePlatform()
+  ? "https://bp-control.vercel.app/api"
+  : "/api";
 
 const safeFetch = async (endpoint: string, method: string, body?: any) => {
   try {
