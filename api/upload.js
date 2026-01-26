@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     // Basic "Admin" check (very simple password for this MVP)
     // In production, use real Auth (NextAuth, Firebase Auth, etc.)
-    const { password, filename, filetype } = req.body;
+    const { password, filename, filetype, category = 'uncategorized' } = req.body;
 
     // Hardcoded simple password for the user to use
     if (password !== 'admin123') {
@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const key = `memes/${Date.now()}-${filename}`;
+        // Save category in filename: memes/funny-timestamp-filename.jpg
+        const key = `memes/${category}-${Date.now()}-${filename}`;
         const command = new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: key,

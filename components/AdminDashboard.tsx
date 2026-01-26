@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, X, Trash2, CheckCircle, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, X, Trash2, Lock, Tag } from 'lucide-react';
 import { AppView } from '../types';
 
 // Password for simple auth
@@ -10,12 +10,22 @@ interface AdminProps {
     onNavigate: (view: AppView) => void;
 }
 
+const CATEGORIES = [
+    { id: 'funny', label: '😂 Funny' },
+    { id: 'dark', label: '💀 Dark Humor' },
+    { id: 'tech', label: '💻 Tech/Coding' },
+    { id: 'animals', label: '🐱 Animals' },
+    { id: 'wholesome', label: '💖 Wholesome' },
+    { id: 'shitpost', label: '💩 Shitpost' }
+];
+
 export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
     const [password, setPassword] = useState("");
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<string>("");
     const [existingFiles, setExistingFiles] = useState<any[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState("funny");
 
     const handleLogin = () => {
         if (password === ADMIN_PASS) {
@@ -65,7 +75,8 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                 body: JSON.stringify({
                     password: ADMIN_PASS,
                     filename: file.name,
-                    filetype: file.type
+                    filetype: file.type,
+                    category: selectedCategory
                 })
             });
 
@@ -123,16 +134,35 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
     return (
         <div className="h-full w-full bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="p-4 bg-white dark:bg-slate-800 shadow-sm flex justify-between items-center z-10">
+            <div className="p-4 bg-white dark:bg-slate-800 shadow-sm flex justify-between items-center z-10 w-full">
                 <h2 className="font-bold text-lg dark:text-white">Memes Manager</h2>
                 <button onClick={() => onNavigate(AppView.DASHBOARD)}>
                     <X size={24} className="text-slate-500" />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 w-full">
                 {/* Upload Zone */}
-                <div className="mb-8">
+                <div className="mb-8 w-full">
+                    {/* Category Selector */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Select Category:</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setSelectedCategory(cat.id)}
+                                    className={`p-2 rounded-lg text-sm font-medium border transition ${selectedCategory === cat.id
+                                            ? 'bg-primary text-white border-primary'
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
+                                        }`}
+                                >
+                                    {cat.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 transition relative">
                         <input
                             type="file"
@@ -147,7 +177,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                             <Upload size={40} className="text-primary mb-4" />
                         )}
                         <p className="font-bold text-slate-700 dark:text-slate-300">
-                            {uploading ? "Uploading..." : "Tap to Upload Meme/Video"}
+                            {uploading ? "Uploading..." : `Upload to '${selectedCategory}'`}
                         </p>
                         <p className="text-xs text-slate-400 mt-2">Max 50MB</p>
                         {uploadStatus && <p className="mt-4 text-green-500 font-bold">{uploadStatus}</p>}
@@ -156,16 +186,22 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
 
                 {/* Gallery */}
                 <h3 className="font-bold text-slate-500 mb-4">Existing Content ({existingFiles.length})</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 w-full">
                     {existingFiles.map((file) => (
-                        <div key={file.id} className="relative aspect-square rounded-xl overflow-hidden group bg-black">
+                        <div key={file.id || file.url} className="relative aspect-square rounded-xl overflow-hidden group bg-black">
                             {file.type === 'video' ? (
                                 <video src={file.url} className="w-full h-full object-cover opacity-80" />
                             ) : (
                                 <img src={file.url} className="w-full h-full object-cover" />
                             )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
+                                <span className="text-[10px] text-white font-mono truncate block text-center">
+                                    {/* Try to parse category from filename if possible, else show ID */}
+                                    {file.id.split('-')[0]}
+                                </span>
+                            </div>
                             <button
-                                onClick={() => handleDelete(file.url)} // Passing URL to identify, backend figures out key
+                                onClick={() => handleDelete(file.url)}
                                 className="absolute top-2 right-2 p-2 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition shadow-md"
                             >
                                 <Trash2 size={16} />
