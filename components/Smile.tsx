@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Virtuoso } from 'react-virtuoso';
-import { Heart, Share2, Play, Volume2, VolumeX, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Share2, AlertTriangle, RefreshCw, X } from 'lucide-react';
+import { Share } from '@capacitor/share';
+import { Toast } from '@capacitor/toast';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Secure Fetch Helper (reuses the one from geminiService logic for simplicity)
-const API_BASE_URL = "https://bp-control.vercel.app/api";
+// API CONSTANTS
+const API_BASE_URL = Capacitor.isNativePlatform()
+    ? "https://bp-control.vercel.app/api"
+    : "/api";
 
 interface FeedItem {
     id: string;
     url: string;
     type: 'image' | 'video';
     timestamp: string;
-    likes: number;
 }
 
 const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) => {
@@ -21,10 +24,7 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
     useEffect(() => {
         if (videoRef.current) {
             if (isVisible) {
-                videoRef.current.play().catch(() => {
-                    // Auto-play often blocked without interaction or mute. 
-                    // We default to Muted to allow autoplay.
-                });
+                videoRef.current.play().catch(() => { });
             } else {
                 videoRef.current.pause();
             }
@@ -32,7 +32,7 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
     }, [isVisible]);
 
     return (
-        <div className="relative w-full h-full flex items-center justify-center bg-black">
+        <div className="relative w-full h-full bg-black flex items-center justify-center">
             <video
                 ref={videoRef}
                 src={src}
@@ -40,54 +40,163 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
                 loop
                 muted={isMuted}
                 playsInline
-            />
-            <button
                 onClick={() => setIsMuted(!isMuted)}
-                className="absolute bottom-4 right-4 p-2 bg-black/50 rounded-full text-white backdrop-blur-md"
-            >
-                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
+            />
+            {isMuted && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/50 p-2 rounded-full backdrop-blur-sm">
+                        <p className="text-white text-xs font-bold">Tap to Unmute</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-const FeedCard = ({ item, isVisible }: { item: FeedItem, isVisible: boolean }) => {
-    const [liked, setLiked] = useState(false);
-    const [likeCount, setLikeCount] = useState(item.likes);
-    const [lastTap, setLastTap] = useState(0);
+export const Smile = () => {
+    const [items, setItems] = useState<FeedItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [reportId, setReportId] = useState<string | null>(null); // Id of item being reported
 
-    const handleDoubleTap = () => {
-        const now = Date.now();
-        if (now - lastTap < 300) {
-            if (!liked) {
-                setLiked(true);
-                setLikeCount(prev => prev + 1);
-                // Trigger heart animation (could add one here)
+    // Cache logic: Keep feed in a ref so it survives tab switches
+    const hasFetched = useRef(false);
+
+    const fetchFeed = useCallback(async (force = false) => {
+        if (hasFetched.current && !force) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/feed`);
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                // Smart Shuffle (Fisher-Yates)
+                for (let i = data.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [data[i], data[j]] = [data[j], data[i]];
+                }
+                setItems(data);
+                hasFetched.current = true;
             }
+        } catch (error) {
+            console.error("Feed Error", error);
+        } finally {
+            setLoading(false);
         }
-        setLastTap(now);
+    }, []);
+
+    useEffect(() => {
+        fetchFeed();
+    }, [fetchFeed]);
+
+    const handleShare = async (item: FeedItem) => {
+        try {
+            await Share.share({
+                title: 'Check this out on BP Control!',
+                text: 'Found this joke regarding BP!',
+                url: item.url,
+                dialogTitle: 'Share with friends',
+            });
+        } catch (err) {
+            console.error("Share failed", err);
+        }
     };
 
-    const toggleLike = () => {
-        setLiked(!liked);
-        setLikeCount(prev => liked ? prev - 1 : prev + 1);
+    const handleReport = async (reason: string) => {
+        if (!reportId) return;
+        const item = items.find(i => i.id === reportId);
+        if (!item) return;
+
+        try {
+            await fetch(`${API_BASE_URL}/report`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reason,
+                    contentId: item.id,
+                    contentUrl: item.url
+                })
+            });
+            await Toast.show({ text: 'Report submitted. We will review it.' });
+            setReportId(null);
+        } catch (err) {
+            await Toast.show({ text: 'Could not send report' });
+        }
     };
 
     return (
-        <div className="w-full bg-white dark:bg-slate-800 mb-6 pb-2 border-b border-slate-100 dark:border-slate-700">
+        <div className="bg-black min-h-full pb-20 relative">
             {/* Header */}
-            <div className="flex items-center p-3">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center font-bold text-white text-xs">
-                    BP
-                </div>
-                <span className="font-semibold text-sm ml-2 text-slate-800 dark:text-white">Daily Smile</span>
+            <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md p-4 flex justify-between items-center border-b border-white/10">
+                <h2 className="text-xl font-bold text-white tracking-tight">Daily Smile</h2>
+                <button onClick={() => fetchFeed(true)} className="p-2 bg-white/10 rounded-full text-white active:bg-white/20">
+                    <RefreshCw size={20} />
+                </button>
             </div>
 
-            {/* Content */}
-            <div
-                className="w-full bg-black flex items-center justify-center relative min-h-[300px]"
-                onClick={handleDoubleTap}
-            >
+            {/* Feed */}
+            <div className="flex flex-col gap-8 pb-32">
+                {items.map((item, index) => (
+                    <FeedCard
+                        key={item.id}
+                        item={item}
+                        onShare={() => handleShare(item)}
+                        onReport={() => setReportId(item.id)}
+                    />
+                ))}
+            </div>
+
+            {loading && (
+                <div className="text-white text-center py-10">Loading memes...</div>
+            )}
+
+            {/* Report Modal */}
+            <AnimatePresence>
+                {reportId && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-slate-900 w-full max-w-sm rounded-2xl p-5 border border-slate-700">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-white font-bold text-lg">Report Content</h3>
+                                <button onClick={() => setReportId(null)} className="text-slate-400"><X size={24} /></button>
+                            </div>
+                            <div className="grid gap-3">
+                                {['Inappropriate', 'Spam', 'Not Funny', 'Other'].map(reason => (
+                                    <button
+                                        key={reason}
+                                        onClick={() => handleReport(reason)}
+                                        className="w-full p-3 rounded-lg bg-slate-800 text-slate-200 font-medium hover:bg-slate-700 text-left"
+                                    >
+                                        {reason}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// Extracted Card for Intersection Observer Logic (Auto-Pause)
+const FeedCard = ({ item, onShare, onReport }: { item: FeedItem, onShare: () => void, onReport: () => void }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsVisible(entry.isIntersecting);
+            },
+            { threshold: 0.6 } // 60% visible to play
+        );
+        if (ref.current) observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={ref} className="w-full bg-black border-b border-white/5 pb-4">
+            {/* Media */}
+            <div className="w-full relative min-h-[300px] flex items-center justify-center bg-black">
                 {item.type === 'video' ? (
                     <VideoPlayer src={item.url} isVisible={isVisible} />
                 ) : (
@@ -100,88 +209,18 @@ const FeedCard = ({ item, isVisible }: { item: FeedItem, isVisible: boolean }) =
                 )}
             </div>
 
-            {/* Actions */}
-            <div className="px-3 py-2 flex items-center gap-4">
-                <button onClick={toggleLike} className={`transition transform active:scale-125 ${liked ? 'text-red-500' : 'text-slate-800 dark:text-white'}`}>
-                    <Heart size={26} fill={liked ? "currentColor" : "none"} />
+            {/* Actions Bar */}
+            <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex gap-4">
+                    <button onClick={onShare} className="flex flex-col items-center gap-1 text-white/90 active:scale-95 transition">
+                        <Share2 size={24} />
+                        <span className="text-[10px] font-medium">Share</span>
+                    </button>
+                </div>
+                <button onClick={onReport} className="text-slate-600 hover:text-red-500 transition">
+                    <AlertTriangle size={20} />
                 </button>
-                <button className="text-slate-800 dark:text-white">
-                    <MessageCircle size={26} />
-                </button>
-                <button className="text-slate-800 dark:text-white ml-auto">
-                    <Share2 size={26} />
-                </button>
             </div>
-
-            {/* Likes Count */}
-            <div className="px-3">
-                <p className="font-bold text-sm text-slate-800 dark:text-white">{likeCount} likes</p>
-                <p className="text-xs text-slate-500 mt-1">View all comments</p>
-            </div>
-        </div>
-    );
-};
-
-export const Smile = () => {
-    const [items, setItems] = useState<FeedItem[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const fetchFeed = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/feed`);
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                setItems(data);
-            }
-        } catch (error) {
-            console.error("Feed Error", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchFeed();
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    if (items.length === 0) {
-        return (
-            <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 p-8 text-center">
-                <div className="text-6xl mb-4">😢</div>
-                <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">Nothing here yet</h2>
-                <p className="text-slate-500">The meme vault is empty. Upload something!</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="h-full w-full bg-slate-50 dark:bg-slate-900 pb-20">
-            <Virtuoso
-                style={{ height: '100%' }}
-                data={items}
-                itemContent={(index, item) => (
-                    <FeedCard
-                        item={item}
-                        // Simple visibility check: if rendered by virtuoso, assume visible logic can be handled by keeping strict "overscan"
-                        // Ideally we use IntersectionObserver inside FeedCard, but Virtuoso mounts/unmounts which helps.
-                        // We'll trust Virtuoso's windowing for performance, but need observer for autopause.
-                        // For MVP, we pass 'true' and let the internal hook decide or improve strictly with Virtuoso's 'itemsRendered' callback if needed.
-                        // Let's implement a real Intersection Observer in the Card for 100% visible requirement.
-                        isVisible={true}
-                    />
-                )}
-                components={{
-                    Header: () => <div className="h-16 w-full"></div> // Spacer for top (if needed) or status bar
-                }}
-            />
         </div>
     );
 };
