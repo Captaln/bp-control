@@ -100,66 +100,97 @@ export const Smile = () => {
     };
 
     return (
-        <div className="bg-black w-full h-full relative">
+        <div className="bg-slate-950 w-full h-full flex flex-col">
 
-            {/* SCROLLABLE FEED */}
-            <div
-                className="w-full h-full overflow-y-auto scroll-smooth"
-                style={{ scrollSnapType: 'y mandatory' }}
-            >
+            {/* FIXED HEADER */}
+            <div className="flex-shrink-0 bg-slate-950 border-b border-slate-800 pt-3 pb-2 px-4 z-10">
+                <div className="flex justify-between items-center mb-2">
+                    <h1 className="text-white font-bold text-lg">Daily Smile</h1>
+                    <button
+                        onClick={() => fetchFeed(true)}
+                        className="bg-slate-800 p-2 rounded-full active:bg-slate-700 transition"
+                    >
+                        <RotateCcw className="text-white" size={16} />
+                    </button>
+                </div>
+
+                {/* Category Tabs */}
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => handleCategoryChange(cat)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${activeCategory === cat
+                                    ? 'bg-white text-black'
+                                    : 'bg-slate-800 text-slate-300'
+                                }`}
+                        >
+                            {cat === 'all' ? '🔥 All' : `#${cat}`}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* SCROLLABLE FEED - Instagram Style */}
+            <div className="flex-1 overflow-y-auto pb-20">
                 {loading && (
-                    <div className="h-full flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent"></div>
+                    <div className="flex items-center justify-center py-20">
+                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-transparent"></div>
                     </div>
                 )}
 
                 {filteredItems.length === 0 && !loading && (
-                    <div className="h-full flex items-center justify-center text-white/50 text-center p-8">
+                    <div className="flex items-center justify-center py-20 text-slate-500 text-center px-8">
                         No memes in this category yet.
                     </div>
                 )}
 
-                {filteredItems.map((item) => (
-                    <FeedCard
-                        key={item.id}
-                        item={item}
-                        onShare={() => handleShare(item)}
-                        onReport={() => setReportId(item.id)}
-                    />
-                ))}
-            </div>
+                {/* Feed Cards */}
+                <div className="flex flex-col gap-4 p-4">
+                    {filteredItems.map((item) => (
+                        <div key={item.id} className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
+                            {/* Card Header */}
+                            <div className="flex items-center gap-3 p-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500"></div>
+                                <div className="flex-1">
+                                    <p className="text-white font-bold text-sm">@bp_control</p>
+                                    <p className="text-slate-500 text-xs">{getTagDisplay(item.id)}</p>
+                                </div>
+                            </div>
 
-            {/* FLOATING HEADER */}
-            <div className="absolute top-0 left-0 right-0 z-20 pt-3 px-4">
-                {/* Top Gradient for readability */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" style={{ height: '120px', top: 0, left: 0, right: 0, position: 'fixed' }} />
+                            {/* Media - Full Width, No Cropping */}
+                            <div className="w-full bg-black">
+                                {item.type === 'video' ? (
+                                    <VideoPlayer src={item.url} itemId={item.id} />
+                                ) : (
+                                    <img
+                                        src={item.url}
+                                        alt="Meme"
+                                        className="w-full h-auto object-contain max-h-[70vh]"
+                                        loading="lazy"
+                                    />
+                                )}
+                            </div>
 
-                <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-2">
-                        <h1 className="text-white font-black tracking-tight text-lg drop-shadow-lg">DAILY SMILE</h1>
-                        <button
-                            onClick={() => fetchFeed(true)}
-                            className="bg-black/30 backdrop-blur-md p-2 rounded-full active:bg-white/30 transition"
-                        >
-                            <RotateCcw className="text-white" size={16} />
-                        </button>
-                    </div>
-
-                    {/* Glass Category Tabs */}
-                    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {CATEGORIES.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => handleCategoryChange(cat)}
-                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition backdrop-blur-md ${activeCategory === cat
-                                    ? 'bg-white/90 text-black shadow-lg'
-                                    : 'bg-black/40 text-white/90 border border-white/20'
-                                    }`}
-                            >
-                                {cat === 'all' ? '🔥 All' : `#${cat}`}
-                            </button>
-                        ))}
-                    </div>
+                            {/* Card Actions */}
+                            <div className="flex items-center gap-4 p-3 border-t border-slate-800">
+                                <button
+                                    onClick={() => handleShare(item)}
+                                    className="flex items-center gap-2 text-white hover:text-blue-400 transition"
+                                >
+                                    <Share2 size={20} />
+                                    <span className="text-sm font-medium">Share</span>
+                                </button>
+                                <button
+                                    onClick={() => setReportId(item.id)}
+                                    className="flex items-center gap-2 text-slate-500 hover:text-red-400 transition ml-auto"
+                                >
+                                    <AlertTriangle size={18} />
+                                    <span className="text-sm">Report</span>
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -167,7 +198,7 @@ export const Smile = () => {
             <AnimatePresence>
                 {reportId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-8 backdrop-blur-sm">
-                        <div className="bg-slate-900 w-full max-w-sm rounded-3xl p-6 border border-white/10 shadow-2xl">
+                        <div className="bg-slate-900 w-full max-w-sm rounded-3xl p-6 border border-slate-700 shadow-2xl">
                             <h3 className="text-white font-bold text-lg mb-4 text-center">Report Content</h3>
                             <div className="grid gap-2">
                                 {['Spam / Scam', 'Offensive', 'Not Funny', 'Other'].map(reason => (
@@ -189,97 +220,49 @@ export const Smile = () => {
     );
 };
 
-// Individual Feed Card with scroll snap
-const FeedCard = ({ item, onShare, onReport }: { item: FeedItem, onShare: () => void, onReport: () => void }) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [isVisible, setIsVisible] = useState(false);
+const VideoPlayer = ({ src, itemId }: { src: string, itemId: string }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isMuted, setIsMuted] = useState(true);
+    const [isPlaying, setIsPlaying] = useState(false);
 
+    // Auto-play when visible
     useEffect(() => {
-        const observer = new IntersectionObserver(([e]) => setIsVisible(e.isIntersecting), { threshold: 0.6 });
-        if (ref.current) observer.observe(ref.current);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (videoRef.current) {
+                    if (entry.isIntersecting) {
+                        videoRef.current.play().catch(() => { });
+                        setIsPlaying(true);
+                    } else {
+                        videoRef.current.pause();
+                        setIsPlaying(false);
+                    }
+                }
+            },
+            { threshold: 0.5 }
+        );
+        if (containerRef.current) observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
 
     return (
         <div
-            ref={ref}
-            className="w-full relative"
-            style={{
-                height: '100vh',
-                scrollSnapAlign: 'start',
-                scrollSnapStop: 'always'
-            }}
+            ref={containerRef}
+            className="w-full relative bg-black"
+            onClick={() => setIsMuted(!isMuted)}
         >
-            {/* Media */}
-            <div className="w-full h-full flex items-center justify-center bg-black">
-                {item.type === 'video' ? (
-                    <VideoPlayer src={item.url} isVisible={isVisible} />
-                ) : (
-                    <img src={item.url} alt="Meme" className="w-full h-full object-cover" />
-                )}
-            </div>
-
-            {/* Bottom Gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-
-            {/* Bottom Left Info */}
-            <div className="absolute bottom-20 left-4 z-10 pointer-events-none">
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white shadow-lg"></div>
-                    <p className="text-white font-bold text-sm drop-shadow-lg">@bp_control</p>
-                </div>
-                <p className="text-white text-sm font-medium drop-shadow-lg">
-                    {getTagDisplay(item.id)} <span className="text-white/60">#trending</span>
-                </p>
-            </div>
-
-            {/* Right Action Buttons */}
-            <div className="absolute bottom-20 right-4 z-10 flex flex-col items-center gap-5">
-                <button onClick={onShare} className="flex flex-col items-center gap-1">
-                    <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
-                        <Share2 size={24} className="text-white" />
-                    </div>
-                    <span className="text-white text-[10px] font-bold drop-shadow-lg">Share</span>
-                </button>
-
-                <button onClick={onReport} className="flex flex-col items-center gap-1">
-                    <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
-                        <AlertTriangle size={22} className="text-white/80" />
-                    </div>
-                    <span className="text-white/80 text-[10px] font-bold drop-shadow-lg">Report</span>
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [isMuted, setIsMuted] = useState(true);
-
-    useEffect(() => {
-        if (videoRef.current) {
-            if (isVisible) {
-                videoRef.current.play().catch(() => { });
-            } else {
-                videoRef.current.pause();
-            }
-        }
-    }, [isVisible]);
-
-    return (
-        <div className="w-full h-full flex items-center justify-center bg-black relative" onClick={() => setIsMuted(!isMuted)}>
             <video
                 ref={videoRef}
                 src={src}
-                className="w-full h-full object-cover"
+                className="w-full h-auto object-contain max-h-[70vh]"
                 loop
                 muted={isMuted}
                 playsInline
             />
-            {isMuted && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm p-3 rounded-full pointer-events-none">
-                    <p className="text-white text-[10px] font-bold tracking-widest uppercase">Tap for Sound</p>
+            {isMuted && isPlaying && (
+                <div className="absolute bottom-3 right-3 bg-black/60 px-2 py-1 rounded-md">
+                    <p className="text-white text-[10px] font-bold">🔇 Tap for sound</p>
                 </div>
             )}
         </div>
