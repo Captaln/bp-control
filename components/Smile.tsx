@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Share2, AlertTriangle, RotateCcw, X } from 'lucide-react';
+import { Share2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Toast } from '@capacitor/toast';
 import { Capacitor } from '@capacitor/core';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 const API_BASE_URL = Capacitor.isNativePlatform()
     ? "https://bp-control.vercel.app/api"
@@ -16,10 +16,8 @@ interface FeedItem {
     timestamp: string;
 }
 
-// Categories for filter tabs
 const CATEGORIES = ['all', 'funny', 'dark', 'tech', 'animals', 'wholesome', 'shitpost'];
 
-// Helper to extract category from filename
 const getCategory = (id: string): string => {
     const parts = id.split('-');
     if (parts.length > 1 && isNaN(Number(parts[0]))) {
@@ -33,46 +31,15 @@ const getTagDisplay = (id: string) => {
     return cat === 'uncategorized' ? '#viral' : `#${cat}`;
 };
 
-const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [isMuted, setIsMuted] = useState(true);
-
-    useEffect(() => {
-        if (videoRef.current) {
-            if (isVisible) {
-                videoRef.current.play().catch(() => { });
-            } else {
-                videoRef.current.pause();
-            }
-        }
-    }, [isVisible]);
-
-    return (
-        <div className="w-full h-full flex items-center justify-center bg-black relative" onClick={() => setIsMuted(!isMuted)}>
-            <video
-                ref={videoRef}
-                src={src}
-                className="w-full h-full object-cover"
-                loop
-                muted={isMuted}
-                playsInline
-            />
-            {isMuted && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/40 p-3 rounded-full backdrop-blur pointer-events-none">
-                    <p className="text-white text-[10px] font-bold tracking-widest uppercase">Tap to Sound</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
 export const Smile = () => {
-    const [allItems, setAllItems] = useState<FeedItem[]>([]); // Original list
-    const [filteredItems, setFilteredItems] = useState<FeedItem[]>([]); // Displayed list
+    const [allItems, setAllItems] = useState<FeedItem[]>([]);
+    const [filteredItems, setFilteredItems] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [reportId, setReportId] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState('all');
+    const [currentIndex, setCurrentIndex] = useState(0);
 
+    const containerRef = useRef<HTMLDivElement>(null);
     const hasFetched = useRef(false);
 
     const fetchFeed = useCallback(async (force = false) => {
@@ -82,13 +49,12 @@ export const Smile = () => {
             const res = await fetch(`${API_BASE_URL}/feed`);
             const data = await res.json();
             if (Array.isArray(data)) {
-                // Fisher-Yates Shuffle
                 for (let i = data.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [data[i], data[j]] = [data[j], data[i]];
                 }
                 setAllItems(data);
-                setFilteredItems(data); // Initially show all
+                setFilteredItems(data);
                 hasFetched.current = true;
             }
         } catch (error) {
@@ -100,9 +66,9 @@ export const Smile = () => {
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
-    // Filter logic
     const handleCategoryChange = (cat: string) => {
         setActiveCategory(cat);
+        setCurrentIndex(0);
         if (cat === 'all') {
             setFilteredItems(allItems);
         } else {
@@ -125,7 +91,6 @@ export const Smile = () => {
         if (!reportId) return;
         const item = allItems.find(i => i.id === reportId);
         if (!item) return;
-
         try {
             await fetch(`${API_BASE_URL}/report`, {
                 method: 'POST',
@@ -137,30 +102,99 @@ export const Smile = () => {
         } catch (err) { }
     };
 
-    return (
-        <div className="bg-black w-full h-screen flex flex-col overflow-hidden">
+    const goNext = () => {
+        if (currentIndex < filteredItems.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        }
+    };
 
-            {/* Fixed Header with Tabs */}
-            <div className="flex-shrink-0 bg-black/90 backdrop-blur-md z-20 pt-4 pb-2 px-4 border-b border-white/10">
+    const goPrev = () => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+        }
+    };
+
+    const currentItem = filteredItems[currentIndex];
+
+    return (
+        <div className="bg-black w-full h-full relative overflow-hidden">
+
+            {/* FULL SCREEN CONTENT FIRST */}
+            <div
+                ref={containerRef}
+                className="absolute inset-0"
+                onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    (containerRef.current as any).startY = touch.clientY;
+                }}
+                onTouchEnd={(e) => {
+                    const touch = e.changedTouches[0];
+                    const startY = (containerRef.current as any).startY || 0;
+                    const diff = startY - touch.clientY;
+                    if (diff > 50) goNext();
+                    if (diff < -50) goPrev();
+                }}
+            >
+                {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center z-30">
+                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent"></div>
+                    </div>
+                )}
+
+                {filteredItems.length === 0 && !loading && (
+                    <div className="h-full flex items-center justify-center text-white/50 text-center p-8">
+                        No memes in this category yet.
+                    </div>
+                )}
+
+                {currentItem && (
+                    <div className="w-full h-full">
+                        {/* Media - Full Screen */}
+                        {currentItem.type === 'video' ? (
+                            <VideoPlayer src={currentItem.url} />
+                        ) : (
+                            <img
+                                src={currentItem.url}
+                                alt="Meme"
+                                className="w-full h-full object-cover"
+                            />
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* TOP GRADIENT for readability */}
+            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+
+            {/* BOTTOM GRADIENT */}
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
+
+            {/* FLOATING HEADER - On top of content */}
+            <div className="absolute top-0 left-0 right-0 z-20 pt-4 px-4 safe-area-top">
                 <div className="flex justify-between items-center mb-3">
-                    <h1 className="text-white font-black tracking-tighter text-xl">DAILY SMILE</h1>
-                    <button
-                        onClick={() => fetchFeed(true)}
-                        className="bg-white/10 p-2 rounded-full active:bg-white/30 transition"
-                    >
-                        <RotateCcw className="text-white" size={18} />
-                    </button>
+                    <h1 className="text-white font-black tracking-tight text-lg drop-shadow-lg">DAILY SMILE</h1>
+                    <div className="flex items-center gap-2">
+                        <span className="text-white/70 text-xs font-bold bg-black/30 backdrop-blur-md px-2 py-1 rounded-full">
+                            {currentIndex + 1}/{filteredItems.length}
+                        </span>
+                        <button
+                            onClick={() => fetchFeed(true)}
+                            className="bg-black/30 backdrop-blur-md p-2 rounded-full active:bg-white/30 transition"
+                        >
+                            <RotateCcw className="text-white" size={16} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Category Tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {/* Category Tabs - Glassmorphism */}
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat}
                             onClick={() => handleCategoryChange(cat)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${activeCategory === cat
-                                    ? 'bg-white text-black'
-                                    : 'bg-white/10 text-white/70'
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition backdrop-blur-md ${activeCategory === cat
+                                    ? 'bg-white/90 text-black shadow-lg'
+                                    : 'bg-black/40 text-white/90 border border-white/20'
                                 }`}
                         >
                             {cat === 'all' ? '🔥 All' : `#${cat}`}
@@ -169,55 +203,37 @@ export const Smile = () => {
                 </div>
             </div>
 
-            {/* Feed Items - Snap Scroll */}
-            <div className="flex-1 overflow-y-scroll snap-y snap-mandatory">
-                {filteredItems.length === 0 && !loading && (
-                    <div className="h-full flex items-center justify-center text-white/50 text-center p-8">
-                        No memes in this category yet.
+            {/* FLOATING BOTTOM UI */}
+            {currentItem && (
+                <>
+                    {/* Bottom Left Info */}
+                    <div className="absolute bottom-20 left-4 z-20 pointer-events-none">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white shadow-lg"></div>
+                            <p className="text-white font-bold text-sm drop-shadow-lg">@bp_control</p>
+                        </div>
+                        <p className="text-white text-sm font-medium drop-shadow-lg">
+                            {getTagDisplay(currentItem.id)} <span className="text-white/60">#trending</span>
+                        </p>
                     </div>
-                )}
-                {filteredItems.map((item) => (
-                    <div key={item.id} className="w-full h-full snap-start snap-always relative flex-shrink-0" style={{ minHeight: 'calc(100vh - 100px)' }}>
-                        <FeedCard item={item} />
 
-                        {/* Overlay: Bottom Left Info (Tags) */}
-                        <div className="absolute bottom-20 left-4 z-10 w-3/4 pointer-events-none">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white"></div>
-                                <p className="text-white font-bold text-sm drop-shadow-md">@bp_control</p>
+                    {/* Right Action Buttons */}
+                    <div className="absolute bottom-20 right-4 z-20 flex flex-col items-center gap-5">
+                        <button onClick={() => handleShare(currentItem)} className="flex flex-col items-center gap-1">
+                            <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
+                                <Share2 size={24} className="text-white" />
                             </div>
-                            <p className="text-white/90 text-sm font-medium leading-relaxed drop-shadow-md">
-                                {getTagDisplay(item.id)} <span className="text-white/60 font-normal">#trending</span>
-                            </p>
-                        </div>
+                            <span className="text-white text-[10px] font-bold drop-shadow-lg">Share</span>
+                        </button>
 
-                        {/* Overlay: Right Action Buttons */}
-                        <div className="absolute bottom-20 right-4 z-10 flex flex-col items-center gap-5">
-                            <button onClick={() => handleShare(item)} className="flex flex-col items-center gap-1">
-                                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition">
-                                    <Share2 size={24} className="text-white" />
-                                </div>
-                                <span className="text-white text-[10px] font-bold">Share</span>
-                            </button>
-
-                            <button onClick={() => setReportId(item.id)} className="flex flex-col items-center gap-1">
-                                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition">
-                                    <AlertTriangle size={22} className="text-white/80" />
-                                </div>
-                                <span className="text-white/80 text-[10px] font-bold">Report</span>
-                            </button>
-                        </div>
-
-                        {/* Gradient Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                        <button onClick={() => setReportId(currentItem.id)} className="flex flex-col items-center gap-1">
+                            <div className="p-3 bg-black/30 backdrop-blur-md rounded-full active:scale-90 transition border border-white/10">
+                                <AlertTriangle size={22} className="text-white/80" />
+                            </div>
+                            <span className="text-white/80 text-[10px] font-bold drop-shadow-lg">Report</span>
+                        </button>
                     </div>
-                ))}
-            </div>
-
-            {loading && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent opacity-50"></div>
-                </div>
+                </>
             )}
 
             {/* Report Modal */}
@@ -225,13 +241,13 @@ export const Smile = () => {
                 {reportId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-8 backdrop-blur-sm">
                         <div className="bg-slate-900 w-full max-w-sm rounded-3xl p-6 border border-white/10 shadow-2xl">
-                            <h3 className="text-white font-bold text-xl mb-4 text-center">Report Content</h3>
-                            <div className="grid gap-3">
+                            <h3 className="text-white font-bold text-lg mb-4 text-center">Report Content</h3>
+                            <div className="grid gap-2">
                                 {['Spam / Scam', 'Offensive', 'Not Funny', 'Other'].map(reason => (
                                     <button
                                         key={reason}
                                         onClick={() => handleReport(reason)}
-                                        className="w-full p-4 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 active:scale-95 transition text-center"
+                                        className="w-full p-3 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 active:scale-95 transition text-center"
                                     >
                                         {reason}
                                     </button>
@@ -246,22 +262,31 @@ export const Smile = () => {
     );
 };
 
-const FeedCard = ({ item }: { item: FeedItem }) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [isVisible, setIsVisible] = useState(false);
+const VideoPlayer = ({ src }: { src: string }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isMuted, setIsMuted] = useState(true);
 
     useEffect(() => {
-        const observer = new IntersectionObserver(([e]) => setIsVisible(e.isIntersecting), { threshold: 0.6 });
-        if (ref.current) observer.observe(ref.current);
-        return () => observer.disconnect();
-    }, []);
+        if (videoRef.current) {
+            videoRef.current.play().catch(() => { });
+        }
+    }, [src]);
 
     return (
-        <div ref={ref} className="w-full h-full flex items-center justify-center bg-black">
-            {item.type === 'video' ? (
-                <VideoPlayer src={item.url} isVisible={isVisible} />
-            ) : (
-                <img src={item.url} alt="Meme" className="w-full h-full object-cover" />
+        <div className="w-full h-full flex items-center justify-center bg-black relative" onClick={() => setIsMuted(!isMuted)}>
+            <video
+                ref={videoRef}
+                src={src}
+                className="w-full h-full object-cover"
+                loop
+                muted={isMuted}
+                playsInline
+                autoPlay
+            />
+            {isMuted && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm p-3 rounded-full pointer-events-none">
+                    <p className="text-white text-[10px] font-bold tracking-widest uppercase">Tap for Sound</p>
+                </div>
             )}
         </div>
     );
