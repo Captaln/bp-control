@@ -39,7 +39,7 @@ export default async function handler(req) {
 
         // Initialize Gemini Model
         // Initialize Gemini Model
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
         // Generate response
         const result = await model.generateContent(prompt);
