@@ -152,8 +152,8 @@ export const Smile = () => {
                                 key={cat}
                                 onClick={() => handleCategoryChange(cat)}
                                 className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition backdrop-blur-md ${activeCategory === cat
-                                        ? 'bg-white/90 text-black shadow-lg'
-                                        : 'bg-black/40 text-white/90 border border-white/20'
+                                    ? 'bg-white/90 text-black shadow-lg'
+                                    : 'bg-black/40 text-white/90 border border-white/20'
                                     }`}
                             >
                                 {cat === 'all' ? '🔥 All' : `#${cat}`}
@@ -284,12 +284,4 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
             )}
         </div>
     );
-};
-
-const getTagDisplay = (id: string) => {
-    const parts = id.split('-');
-    if (parts.length > 1 && isNaN(Number(parts[0]))) {
-        return `#${parts[0]}`;
-    }
-    return '#viral';
 };
