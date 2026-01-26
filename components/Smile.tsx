@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Share2, AlertTriangle, RotateCcw, X, Hash } from 'lucide-react';
+import { Share2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Toast } from '@capacitor/toast';
 import { Capacitor } from '@capacitor/core';
@@ -16,16 +16,21 @@ interface FeedItem {
     timestamp: string;
 }
 
-// Helper to extract #tag from the ID string (which is filename)
-const getTag = (id: string) => {
-    // Expected format: category-timestamp-name.ext
+// Categories for filter tabs
+const CATEGORIES = ['all', 'funny', 'dark', 'tech', 'animals', 'wholesome', 'shitpost'];
+
+// Helper to extract category from filename
+const getCategory = (id: string): string => {
     const parts = id.split('-');
-    // Check if first part is a category (text) or timestamp (number)
-    // If it is NOT a number, it is a category.
     if (parts.length > 1 && isNaN(Number(parts[0]))) {
-        return `#${parts[0]}`;
+        return parts[0].toLowerCase();
     }
-    return '#viral'; // Fallback for old files
+    return 'uncategorized';
+};
+
+const getTagDisplay = (id: string) => {
+    const cat = getCategory(id);
+    return cat === 'uncategorized' ? '#viral' : `#${cat}`;
 };
 
 const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) => {
@@ -47,7 +52,7 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
             <video
                 ref={videoRef}
                 src={src}
-                className="w-full h-full object-cover" // Full screen cover
+                className="w-full h-full object-cover"
                 loop
                 muted={isMuted}
                 playsInline
@@ -62,9 +67,11 @@ const VideoPlayer = ({ src, isVisible }: { src: string, isVisible: boolean }) =>
 };
 
 export const Smile = () => {
-    const [items, setItems] = useState<FeedItem[]>([]);
+    const [allItems, setAllItems] = useState<FeedItem[]>([]); // Original list
+    const [filteredItems, setFilteredItems] = useState<FeedItem[]>([]); // Displayed list
     const [loading, setLoading] = useState(true);
     const [reportId, setReportId] = useState<string | null>(null);
+    const [activeCategory, setActiveCategory] = useState('all');
 
     const hasFetched = useRef(false);
 
@@ -80,7 +87,8 @@ export const Smile = () => {
                     const j = Math.floor(Math.random() * (i + 1));
                     [data[i], data[j]] = [data[j], data[i]];
                 }
-                setItems(data);
+                setAllItems(data);
+                setFilteredItems(data); // Initially show all
                 hasFetched.current = true;
             }
         } catch (error) {
@@ -92,11 +100,21 @@ export const Smile = () => {
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
+    // Filter logic
+    const handleCategoryChange = (cat: string) => {
+        setActiveCategory(cat);
+        if (cat === 'all') {
+            setFilteredItems(allItems);
+        } else {
+            setFilteredItems(allItems.filter(item => getCategory(item.id) === cat));
+        }
+    };
+
     const handleShare = async (item: FeedItem) => {
         try {
             await Share.share({
                 title: 'BP Control Meme',
-                text: `Check this ${getTag(item.id)} meme!`,
+                text: `Check this ${getTagDisplay(item.id)} meme!`,
                 url: item.url,
                 dialogTitle: 'Share',
             });
@@ -105,7 +123,7 @@ export const Smile = () => {
 
     const handleReport = async (reason: string) => {
         if (!reportId) return;
-        const item = items.find(i => i.id === reportId);
+        const item = allItems.find(i => i.id === reportId);
         if (!item) return;
 
         try {
@@ -120,62 +138,84 @@ export const Smile = () => {
     };
 
     return (
-        <div className="bg-black w-full h-full relative overflow-y-scroll snap-y snap-mandatory scroll-smooth">
+        <div className="bg-black w-full h-screen flex flex-col overflow-hidden">
 
-            {/* Top Bar */}
-            <div className="fixed top-4 left-4 right-4 z-20 flex justify-between items-center pointer-events-none">
-                <h1 className="text-white font-black tracking-tighter text-2xl drop-shadow-md">DAILY SMILE</h1>
-                <button
-                    onClick={() => fetchFeed(true)}
-                    className="bg-white/10 backdrop-blur-md p-2 rounded-full pointer-events-auto active:bg-white/30 transition shadow-lg"
-                >
-                    <RotateCcw className="text-white" size={20} />
-                </button>
+            {/* Fixed Header with Tabs */}
+            <div className="flex-shrink-0 bg-black/90 backdrop-blur-md z-20 pt-4 pb-2 px-4 border-b border-white/10">
+                <div className="flex justify-between items-center mb-3">
+                    <h1 className="text-white font-black tracking-tighter text-xl">DAILY SMILE</h1>
+                    <button
+                        onClick={() => fetchFeed(true)}
+                        className="bg-white/10 p-2 rounded-full active:bg-white/30 transition"
+                    >
+                        <RotateCcw className="text-white" size={18} />
+                    </button>
+                </div>
+
+                {/* Category Tabs */}
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => handleCategoryChange(cat)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${activeCategory === cat
+                                    ? 'bg-white text-black'
+                                    : 'bg-white/10 text-white/70'
+                                }`}
+                        >
+                            {cat === 'all' ? '🔥 All' : `#${cat}`}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Feed Items */}
-            {items.map((item) => (
-                <div key={item.id} className="w-full h-full snap-start relative">
-                    <FeedCard item={item} />
+            {/* Feed Items - Snap Scroll */}
+            <div className="flex-1 overflow-y-scroll snap-y snap-mandatory">
+                {filteredItems.length === 0 && !loading && (
+                    <div className="h-full flex items-center justify-center text-white/50 text-center p-8">
+                        No memes in this category yet.
+                    </div>
+                )}
+                {filteredItems.map((item) => (
+                    <div key={item.id} className="w-full h-full snap-start snap-always relative flex-shrink-0" style={{ minHeight: 'calc(100vh - 100px)' }}>
+                        <FeedCard item={item} />
 
-                    {/* Overlay: Bottom Left Info (Tags) */}
-                    <div className="absolute bottom-24 left-4 z-10 w-3/4 pointer-events-none">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white"></div>
-                            <p className="text-white font-bold text-sm drop-shadow-md">@bp_control_official</p>
+                        {/* Overlay: Bottom Left Info (Tags) */}
+                        <div className="absolute bottom-20 left-4 z-10 w-3/4 pointer-events-none">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border-2 border-white"></div>
+                                <p className="text-white font-bold text-sm drop-shadow-md">@bp_control</p>
+                            </div>
+                            <p className="text-white/90 text-sm font-medium leading-relaxed drop-shadow-md">
+                                {getTagDisplay(item.id)} <span className="text-white/60 font-normal">#trending</span>
+                            </p>
                         </div>
-                        <p className="text-white/90 text-sm font-medium leading-relaxed drop-shadow-md">
-                            {getTag(item.id)} <span className="text-white/60 font-normal">#trending #daily</span>
-                        </p>
-                    </div>
 
-                    {/* Overlay: Right Action Buttons */}
-                    <div className="absolute bottom-24 right-4 z-10 flex flex-col items-center gap-6">
-                        <button
-                            onClick={() => handleShare(item)}
-                            className="flex flex-col items-center gap-1 group"
-                        >
-                            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition group-hover:bg-white/20">
-                                <Share2 size={28} className="text-white" />
-                            </div>
-                            <span className="text-white text-[10px] font-bold drop-shadow-md">Share</span>
-                        </button>
+                        {/* Overlay: Right Action Buttons */}
+                        <div className="absolute bottom-20 right-4 z-10 flex flex-col items-center gap-5">
+                            <button onClick={() => handleShare(item)} className="flex flex-col items-center gap-1">
+                                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition">
+                                    <Share2 size={24} className="text-white" />
+                                </div>
+                                <span className="text-white text-[10px] font-bold">Share</span>
+                            </button>
 
-                        <button
-                            onClick={() => setReportId(item.id)}
-                            className="flex flex-col items-center gap-1 group"
-                        >
-                            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition group-hover:bg-white/20">
-                                <AlertTriangle size={24} className="text-white/80 group-hover:text-red-400" />
-                            </div>
-                            <span className="text-white/80 text-[10px] font-bold drop-shadow-md">Report</span>
-                        </button>
+                            <button onClick={() => setReportId(item.id)} className="flex flex-col items-center gap-1">
+                                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-full active:scale-90 transition">
+                                    <AlertTriangle size={22} className="text-white/80" />
+                                </div>
+                                <span className="text-white/80 text-[10px] font-bold">Report</span>
+                            </button>
+                        </div>
+
+                        {/* Gradient Overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
 
             {loading && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent opacity-50"></div>
                 </div>
             )}
@@ -185,7 +225,7 @@ export const Smile = () => {
                 {reportId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-8 backdrop-blur-sm">
                         <div className="bg-slate-900 w-full max-w-sm rounded-3xl p-6 border border-white/10 shadow-2xl">
-                            <h3 className="text-white font-bold text-xl mb-4 text-center">Block Content?</h3>
+                            <h3 className="text-white font-bold text-xl mb-4 text-center">Report Content</h3>
                             <div className="grid gap-3">
                                 {['Spam / Scam', 'Offensive', 'Not Funny', 'Other'].map(reason => (
                                     <button
@@ -223,8 +263,6 @@ const FeedCard = ({ item }: { item: FeedItem }) => {
             ) : (
                 <img src={item.url} alt="Meme" className="w-full h-full object-cover" />
             )}
-            {/* Linear Gradient for overlay readability */}
-            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
         </div>
     );
 };
