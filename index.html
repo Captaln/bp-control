@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BP Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'media', // Follows system preference
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0ea5e9', // Sky 500
+            secondary: '#6366f1', // Indigo 500
+            calm: '#ccfbf1', // Teal 100
+            angry: '#ef4444', // Red 500
+          },
+          keyframes: {
+            expand: {
+              '0%': { transform: 'scale(1)' },
+              '100%': { transform: 'scale(1.5)' },
+            },
+            contract: {
+              '0%': { transform: 'scale(1.5)' },
+              '100%': { transform: 'scale(1)' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            },
+            'pulse-glow': {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.5)' },
+              '50%': { boxShadow: '0 0 20px 5px rgba(239, 68, 68, 0.3)' },
+            }
+          },
+          animation: {
+            'breathe-in': 'expand 4s ease-in-out forwards',
+            'breathe-out': 'contract 4s ease-in-out forwards',
+            'float': 'float 3s ease-in-out infinite',
+            'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+          }
+        },
+      },
+    }
+  </script>
+  <style>
+    /* Hide scrollbar for app-like feel */
+    body {
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+  </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 h-screen w-screen overflow-hidden">
+  <div id="root" class="h-full w-full"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
