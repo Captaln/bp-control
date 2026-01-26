@@ -1,12 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { AppView, MoodLog } from '../types';
-import { Flame, Activity, BarChart2, Gamepad2, Settings, Trash2, X, AlertTriangle, CheckCircle2, Shield, Mail, TrendingUp, MessageSquare } from 'lucide-react';
+import { Flame, Activity, BarChart2, Gamepad2, Settings, Trash2, X, AlertTriangle, CheckCircle2, Shield, Mail, TrendingUp, MessageSquare, Wind, Smile, Sparkles } from 'lucide-react';
 
 // API CONSTANTS
 const API_BASE_URL = Capacitor.isNativePlatform()
   ? "https://bp-control.vercel.app/api"
   : "/api";
+
+// Mini Jokes/Quotes Array
+const MINI_JOKES = [
+  "Deep breaths. Shallow graves are illegal. 😤",
+  "You're doing great. The bar is low. 🏆",
+  "Hydrate or diedrate 💧",
+  "Plot twist: You survive this too.",
+  "Therapy is expensive. Screaming is free. 🗣️",
+  "Chaos is just spicy peace ✨",
+  "You handled 100% of your bad days. Legend.",
+  "Coffee: Because adulting is hard ☕",
+  "Your vibe attracts your tribe 🔥",
+  "Ctrl+Alt+Del your stress 💻",
+  "Mercury is in retrograde. Blame that.",
+  "Inhale tacos, exhale negativity 🌮",
+  "Be the energy you want to attract ⚡",
+  "Life update: still figuring it out.",
+  "Sending good vibes... please hold 📞"
+];
 
 interface DashboardProps {
   onNavigate: (view: AppView) => void;
@@ -16,10 +35,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [moodData, setMoodData] = useState<{ avg: number; count: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [currentJoke, setCurrentJoke] = useState(0);
 
   // Trending Data State
   const [trending, setTrending] = useState<any[]>([]);
   const [loadingTrends, setLoadingTrends] = useState(true);
+
+  // Rotate jokes every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentJoke((prev) => (prev + 1) % MINI_JOKES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load User Stats locally
   const loadMoodData = () => {
@@ -43,14 +71,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     loadMoodData();
   }, []);
 
-  // Fetch Real Trending Data (Latest 3 items for cleaner UI)
+  // Fetch Real Trending Data
   useEffect(() => {
     const fetchTrends = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/feed`);
         const data = await res.json();
         if (Array.isArray(data)) {
-          setTrending(data.slice(0, 3)); // Only 3 for a horizontal scroll
+          setTrending(data.slice(0, 3));
         }
       } catch (e) {
         console.error("Failed to load trends");
@@ -92,110 +120,132 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  // Helper to get tag from item id
   const getTag = (id: string) => {
     const parts = id.split('-');
     if (parts.length > 1 && isNaN(Number(parts[0]))) return parts[0].toUpperCase();
     return 'FRESH';
   };
 
+  const getMoodEmoji = () => {
+    if (!moodData) return '😶';
+    if (moodData.avg <= 3) return '😌';
+    if (moodData.avg <= 5) return '😐';
+    if (moodData.avg <= 7) return '😤';
+    return '🤬';
+  };
+
   return (
-    <div className="h-full w-full p-5 flex flex-col justify-start items-center overflow-y-auto pb-24 relative bg-slate-50 dark:bg-slate-900">
+    <div className="h-full w-full p-4 flex flex-col justify-start items-center overflow-y-auto pb-24 relative bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
+
       {/* Header */}
-      <div className="w-full mt-2 mb-6 flex justify-between items-start">
+      <div className="w-full mt-2 mb-4 flex justify-between items-center">
         <div onClick={handleHeaderTap} className="cursor-pointer select-none">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">BP Control</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">How is your pressure today?</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">BP Control</h1>
+          <p className="text-slate-400 text-xs font-medium">Manage your chaos ⚡</p>
         </div>
-        <button onClick={() => setShowSettings(true)} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm">
-          <Settings size={22} className="text-slate-400" />
+        <button onClick={() => setShowSettings(true)} className="p-2.5 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl">
+          <Settings size={20} className="text-slate-400" />
         </button>
       </div>
 
-      {/* Emergency Button */}
+      {/* Rotating Mini Joke Card */}
+      <div className="w-full bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-2xl p-4 mb-4 backdrop-blur-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={14} className="text-violet-400" />
+          <span className="text-[10px] text-violet-400 font-bold uppercase tracking-wider">Daily Vibe</span>
+        </div>
+        <p className="text-white font-medium text-sm transition-opacity duration-500">
+          {MINI_JOKES[currentJoke]}
+        </p>
+      </div>
+
+      {/* Emergency Button - Glassmorphism */}
       <button
         onClick={() => onNavigate(AppView.VENT)}
-        className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl p-5 shadow-lg flex items-center justify-between mb-4 active:scale-95 transition"
+        className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl p-5 flex items-center justify-between mb-4 active:scale-[0.98] transition-all shadow-lg shadow-red-500/20"
       >
         <div className="text-left">
-          <h2 className="text-xl font-bold">I'M MAD! 🤬</h2>
-          <p className="opacity-90 text-sm">Quick! Tap to vent now.</p>
+          <h2 className="text-xl font-black">I'M MAD! 🤬</h2>
+          <p className="opacity-90 text-sm font-medium">Tap to vent with others</p>
         </div>
-        <Flame size={36} className="text-white animate-pulse" />
+        <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
+          <Flame size={28} className="text-white animate-pulse" />
+        </div>
       </button>
 
-      {/* Today's Mood Status - Always Visible */}
-      <div className="w-full bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-cyan-500 flex items-center justify-center">
-            <Activity size={20} className="text-white" />
-          </div>
-          <div>
-            <p className="text-slate-800 dark:text-white font-bold text-sm">Today's Status</p>
-            {moodData ? (
-              <p className="text-slate-500 dark:text-slate-400 text-xs">
-                Avg: {moodData.avg.toFixed(1)}/10 • {moodData.count} {moodData.count === 1 ? 'entry' : 'entries'}
-              </p>
-            ) : (
-              <p className="text-slate-400 dark:text-slate-500 text-xs">Track your first mood</p>
-            )}
-          </div>
+      {/* Today's Status - Modern Card */}
+      <div
+        onClick={() => onNavigate(AppView.TRACK)}
+        className="w-full bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-2xl p-4 mb-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/30">
+          {getMoodEmoji()}
         </div>
-        {moodData ? (
-          <button onClick={() => onNavigate(AppView.TRACK)} className="text-xs text-primary font-bold">View →</button>
-        ) : (
-          <span className="text-xs text-slate-400 font-medium">No Data Yet</span>
-        )}
+        <div className="flex-1">
+          <p className="text-white font-bold">Today's Status</p>
+          {moodData ? (
+            <p className="text-slate-400 text-sm">
+              Avg: <span className="text-cyan-400 font-bold">{moodData.avg.toFixed(1)}/10</span> • {moodData.count} {moodData.count === 1 ? 'log' : 'logs'}
+            </p>
+          ) : (
+            <p className="text-slate-500 text-sm">Tap to log your first mood</p>
+          )}
+        </div>
+        <div className="text-slate-500 text-xs">→</div>
       </div>
 
-      {/* Apps Grid */}
-      <div className="grid grid-cols-2 gap-3 w-full mb-6">
-        <button onClick={() => onNavigate(AppView.BREATHE)} className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-xl flex flex-col items-center gap-1 border border-teal-100 dark:border-teal-800">
-          <span className="text-2xl">🧘</span> <span className="font-bold text-teal-700 dark:text-teal-300 text-sm">Relax</span>
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-4 gap-2 w-full mb-5">
+        <button onClick={() => onNavigate(AppView.BREATHE)} className="bg-teal-500/10 border border-teal-500/20 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition">
+          <Wind size={22} className="text-teal-400" />
+          <span className="text-teal-400 text-[10px] font-bold">Relax</span>
         </button>
-        <button onClick={() => onNavigate(AppView.LAUGH)} className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl flex flex-col items-center gap-1 border border-indigo-100 dark:border-indigo-800">
-          <span className="text-2xl">😂</span> <span className="font-bold text-indigo-700 dark:text-indigo-300 text-sm">Laugh</span>
+        <button onClick={() => onNavigate(AppView.LAUGH)} className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition">
+          <Smile size={22} className="text-yellow-400" />
+          <span className="text-yellow-400 text-[10px] font-bold">Laugh</span>
         </button>
-        <button onClick={() => onNavigate(AppView.PLAY)} className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl flex flex-col items-center gap-1 border border-amber-100 dark:border-amber-800">
-          <Gamepad2 size={24} className="text-amber-600" /> <span className="font-bold text-amber-700 dark:text-amber-300 text-sm">Play</span>
+        <button onClick={() => onNavigate(AppView.PLAY)} className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition">
+          <Gamepad2 size={22} className="text-orange-400" />
+          <span className="text-orange-400 text-[10px] font-bold">Play</span>
         </button>
-        <button onClick={() => onNavigate(AppView.TRACK)} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl flex flex-col items-center gap-1 border border-slate-200 dark:border-slate-700">
-          <BarChart2 size={24} className="text-slate-600 dark:text-slate-400" /> <span className="font-bold text-slate-700 dark:text-white text-sm">Track</span>
+        <button onClick={() => onNavigate(AppView.TRACK)} className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition">
+          <BarChart2 size={22} className="text-blue-400" />
+          <span className="text-blue-400 text-[10px] font-bold">Track</span>
         </button>
       </div>
 
-      {/* Trending Section - Horizontal Scroll Carousel */}
+      {/* Trending Section */}
       <div className="w-full mb-4">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-slate-800 dark:text-white font-bold text-sm flex items-center gap-2">
-            <TrendingUp size={14} className="text-yellow-500" />
-            Trending Now
+          <h3 className="text-white font-bold text-sm flex items-center gap-2">
+            <TrendingUp size={14} className="text-pink-500" />
+            Trending Memes
           </h3>
-          <button onClick={() => onNavigate(AppView.SMILE)} className="text-xs text-primary font-bold">See All →</button>
+          <button onClick={() => onNavigate(AppView.SMILE)} className="text-xs text-pink-400 font-bold">See All →</button>
         </div>
 
         {loadingTrends ? (
           <div className="text-slate-500 text-xs text-center py-4">Loading...</div>
         ) : trending.length === 0 ? (
-          <div className="text-slate-500 text-xs text-center py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-            No trends yet. Upload something!
+          <div className="text-slate-500 text-xs text-center py-6 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
+            No trends yet. Be first! 🚀
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 snap-x no-scrollbar">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x" style={{ scrollbarWidth: 'none' }}>
             {trending.map((item, i) => (
               <div
                 key={item.id}
                 onClick={() => onNavigate(AppView.SMILE)}
-                className={`flex-shrink-0 ${i === 0 ? 'w-40 h-56' : 'w-28 h-40'} rounded-xl overflow-hidden relative border border-white/10 cursor-pointer active:scale-95 transition snap-start`}
+                className={`flex-shrink-0 ${i === 0 ? 'w-36 h-48' : 'w-24 h-32'} rounded-xl overflow-hidden relative border border-white/5 cursor-pointer active:scale-95 transition snap-start shadow-lg`}
               >
                 {item.type === 'video' ? (
                   <video src={item.url} className="w-full h-full object-cover" muted />
                 ) : (
                   <img src={item.url} className="w-full h-full object-cover" alt="Trend" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2">
-                  <span className="text-[9px] text-white font-bold uppercase tracking-wider">
-                    🔥 {getTag(item.id)}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex items-end p-2">
+                  <span className="text-[9px] text-white font-bold uppercase tracking-wider bg-pink-500/80 px-1.5 py-0.5 rounded">
+                    {getTag(item.id)}
                   </span>
                 </div>
               </div>
@@ -206,78 +256,70 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Full Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full sm:w-96 rounded-t-3xl sm:rounded-3xl p-6 animate-in slide-in-from-bottom-10 duration-300 max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 w-full sm:w-96 rounded-t-3xl sm:rounded-3xl p-6 animate-in slide-in-from-bottom-10 duration-300 max-h-[85vh] overflow-y-auto border-t border-slate-700">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <Settings size={20} /> Settings
               </h3>
-              <button onClick={() => setShowSettings(false)} className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white">
+              <button onClick={() => setShowSettings(false)} className="p-1 text-slate-400 hover:text-white">
                 <X size={24} />
               </button>
             </div>
 
             <div className="space-y-3">
-              {/* Clear Chat */}
-              <button onClick={() => handleClearData('chat')} className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition">
-                <div className="p-2 bg-white dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 shadow-sm"><MessageSquare size={18} /></div>
+              <button onClick={() => handleClearData('chat')} className="w-full p-4 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center gap-3 transition">
+                <div className="p-2 bg-slate-700 rounded-lg"><MessageSquare size={18} className="text-slate-300" /></div>
                 <div className="text-left flex-1">
-                  <p className="font-bold text-slate-700 dark:text-white text-sm">Clear Chat History</p>
-                  <p className="text-xs text-slate-400">Delete vent conversations</p>
+                  <p className="font-bold text-white text-sm">Clear Chat History</p>
+                  <p className="text-xs text-slate-500">Delete vent conversations</p>
                 </div>
               </button>
 
-              {/* Clear Mood */}
-              <button onClick={() => handleClearData('mood')} className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition">
-                <div className="p-2 bg-white dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 shadow-sm"><Activity size={18} /></div>
+              <button onClick={() => handleClearData('mood')} className="w-full p-4 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center gap-3 transition">
+                <div className="p-2 bg-slate-700 rounded-lg"><Activity size={18} className="text-slate-300" /></div>
                 <div className="text-left flex-1">
-                  <p className="font-bold text-slate-700 dark:text-white text-sm">Clear Mood Logs</p>
-                  <p className="text-xs text-slate-400">Reset tracking stats</p>
+                  <p className="font-bold text-white text-sm">Clear Mood Logs</p>
+                  <p className="text-xs text-slate-500">Reset tracking stats</p>
                 </div>
               </button>
 
-              <hr className="border-slate-100 dark:border-slate-700 my-2" />
+              <hr className="border-slate-700 my-2" />
 
-              {/* Reset All */}
-              <button onClick={() => handleClearData('all')} className="w-full p-4 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 flex items-center gap-3 transition">
-                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg text-red-500 shadow-sm"><AlertTriangle size={18} /></div>
+              <button onClick={() => handleClearData('all')} className="w-full p-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 flex items-center gap-3 transition">
+                <div className="p-2 bg-red-500/20 rounded-lg"><AlertTriangle size={18} className="text-red-400" /></div>
                 <div className="text-left flex-1">
-                  <p className="font-bold text-red-600 dark:text-red-400 text-sm">Reset Everything</p>
-                  <p className="text-xs text-red-400">Clear all data & restart</p>
+                  <p className="font-bold text-red-400 text-sm">Reset Everything</p>
+                  <p className="text-xs text-red-400/60">Clear all data & restart</p>
                 </div>
               </button>
 
-              <hr className="border-slate-100 dark:border-slate-700 my-2" />
+              <hr className="border-slate-700 my-2" />
 
-              {/* Privacy Info */}
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                <div className="flex items-center gap-2 mb-2 text-slate-700 dark:text-white font-bold text-sm">
-                  <Shield size={16} className="text-teal-500" /> Privacy & Data
+              <div className="bg-slate-800 p-4 rounded-xl">
+                <div className="flex items-center gap-2 mb-2 text-white font-bold text-sm">
+                  <Shield size={16} className="text-teal-400" /> Privacy & Data
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  BP Control is a <strong>local-first</strong> app. Your chats, mood logs, and settings are stored 100% on your device. We do not track you or sell your data.
-                </p>
-                <p className="text-[10px] text-slate-400 mt-2 italic">
-                  Note: If you delete the app or clear browser cache, your data will be lost.
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Your data stays on your device. We don't track or sell anything.
                 </p>
               </div>
 
-              {/* Contact Info */}
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <div className="bg-slate-800 p-4 rounded-xl flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2 mb-1 text-slate-700 dark:text-white font-bold text-sm">
-                    <Mail size={16} className="text-indigo-500" /> Feedback
+                  <div className="flex items-center gap-2 mb-1 text-white font-bold text-sm">
+                    <Mail size={16} className="text-violet-400" /> Feedback
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Found a bug? Say hi!</p>
+                  <p className="text-xs text-slate-500">Found a bug?</p>
                 </div>
-                <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-primary bg-white dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm hover:bg-slate-50">
+                <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-violet-400 bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20">
                   Email Us
                 </a>
               </div>
             </div>
 
             <div className="mt-6 text-center">
-              <p className="text-[10px] text-slate-400">BP Control v2.2.0 (Build: {new Date().toLocaleTimeString()})</p>
+              <p className="text-[10px] text-slate-600">BP Control v2.3.0</p>
             </div>
           </div>
         </div>
@@ -285,7 +327,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-slate-700">
           <CheckCircle2 size={16} className="text-green-400" />
           <span className="text-sm font-medium">{toastMessage}</span>
         </div>
