@@ -16,7 +16,10 @@ const safeFetch = async (endpoint: string, method: string, body?: any) => {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server Error ${response.status}: ${errorText}`);
+    }
     const data = await response.json();
     return data.text;
   } catch (error) {
@@ -32,8 +35,10 @@ export const getVentResponse = async (
 ): Promise<string> => {
   try {
     return await safeFetch('/vent', 'POST', { history, userInput, mode });
-  } catch (error) {
-    return "I'm having a little trouble connecting to the secure server. Please check your internet.";
+  } catch (error: any) {
+    console.error("Gemini Service Error:", error);
+    // Return the actual error to help debugging
+    return `Error: ${error.message || "Connection failed"}. (Status: ${error.status || "Unknown"})`;
   }
 };
 
