@@ -38,7 +38,8 @@ export default async function handler(req) {
         const prompt = `${systemPrompt}\n\nUser: ${userInput}`;
 
         // Initialize Gemini Model
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // Initialize Gemini Model
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Generate response
         const result = await model.generateContent(prompt);
