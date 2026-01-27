@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Shield, LayoutDashboard, Users, Image, Bell, Settings } from 'lucide-react';
-import { UserManagement } from './components/UserManagement'; // Import UI
+import { Shield, LayoutDashboard, Users, Image, Bell, Settings, MessageSquare, Megaphone } from 'lucide-react';
+import { UserManagement } from './components/UserManagement';
 import { ContentManagement } from './components/ContentManagement';
 import { NotificationCenter } from './components/NotificationCenter';
+import { ConfessionsManagement } from './components/ConfessionsManagement';
+import { AdsManagement } from './components/AdsManagement';
 
 // TODO: User to provide actual admin email
 const ADMIN_EMAILS = [
@@ -110,6 +112,8 @@ export default function AdminApp() {
                 {currentView === 'USERS' && <UserManagement />}
                 {currentView === 'CONTENT' && <ContentManagement />}
                 {currentView === 'NOTIFICATIONS' && <NotificationCenter />}
+                {currentView === 'CONFESSIONS' && <ConfessionsManagement />}
+                {currentView === 'ADS' && <AdsManagement />}
                 {currentView === 'SETTINGS' && (
                     <div className="p-8 border border-red-900/30 rounded-2xl bg-red-900/10">
                         <h3 className="text-red-500 font-bold mb-4">Danger Zone</h3>
@@ -131,6 +135,8 @@ const AdminSidebar = ({ currentView, onNavigate }: { currentView: string, onNavi
     const MENU = [
         { id: 'DASHBOARD', icon: LayoutDashboard, label: 'Command Center' },
         { id: 'USERS', icon: Users, label: 'User Database' },
+        { id: 'CONFESSIONS', icon: MessageSquare, label: 'Confessions' },
+        { id: 'ADS', icon: Megaphone, label: 'Monetization' },
         { id: 'CONTENT', icon: Image, label: 'Content & CMS' },
         { id: 'NOTIFICATIONS', icon: Bell, label: 'Broadcasts' },
         { id: 'SETTINGS', icon: Settings, label: 'System Config' },
