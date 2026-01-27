@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Check, X, Trash2, StopCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { Check, X, Trash2, StopCircle, RefreshCw, MessageSquare, Plus, Send } from 'lucide-react';
 
 export const ConfessionsManagement = () => {
     const [confessions, setConfessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
+
+    // Create Mode
+    const [isCreating, setIsCreating] = useState(false);
+    const [newContent, setNewContent] = useState("");
+    const [newType, setNewType] = useState("post");
 
     useEffect(() => {
         fetchConfessions();
@@ -33,13 +38,34 @@ export const ConfessionsManagement = () => {
 
     const handleAction = async (id: string, updates: any) => {
         await supabase.from('confessions').update(updates).eq('id', id);
-        fetchConfessions(); // Optimistic update would be better but this is fast enough
+        fetchConfessions();
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Permanently delete?')) return;
         await supabase.from('confessions').delete().eq('id', id);
         fetchConfessions();
+    };
+
+    const handleCreate = async () => {
+        if (!newContent.trim()) return;
+
+        // Create as "System" or anonymous admin
+        const { error } = await supabase.from('confessions').insert({
+            content: newContent,
+            type: newType,
+            background_id: 'midnight', // Default
+            is_approved: true, // Auto approve admin posts
+            user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            setNewContent("");
+            setIsCreating(false);
+            fetchConfessions();
+        }
     };
 
     const filtered = confessions.filter(c => {
@@ -56,8 +82,37 @@ export const ConfessionsManagement = () => {
                     <button onClick={() => setFilter('pending')} className={`px-4 py-2 rounded-md text-sm font-bold ${filter === 'pending' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Pending</button>
                     <button onClick={() => setFilter('approved')} className={`px-4 py-2 rounded-md text-sm font-bold ${filter === 'approved' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Approved</button>
                 </div>
-                <button onClick={fetchConfessions} className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition"><RefreshCw size={18} /></button>
+                <div className="flex gap-2">
+                    <button onClick={() => setIsCreating(!isCreating)} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition font-bold text-xs flex items-center gap-2 px-4">
+                        <Plus size={16} /> New Confession
+                    </button>
+                    <button onClick={fetchConfessions} className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition"><RefreshCw size={18} /></button>
+                </div>
             </div>
+
+            {/* Creation UI */}
+            {isCreating && (
+                <div className="bg-slate-900 border border-indigo-500/50 rounded-xl p-4 mb-6 animate-in slide-in-from-top-2">
+                    <h3 className="font-bold mb-2 text-indigo-400">Write New Confession</h3>
+                    <div className="flex gap-2 mb-2">
+                        <button onClick={() => setNewType('post')} className={`flex-1 py-1 text-xs font-bold rounded ${newType === 'post' ? 'bg-indigo-600' : 'bg-slate-800'}`}>Post (Long)</button>
+                        <button onClick={() => setNewType('story')} className={`flex-1 py-1 text-xs font-bold rounded ${newType === 'story' ? 'bg-purple-600' : 'bg-slate-800'}`}>Story (Short)</button>
+                    </div>
+                    <textarea
+                        className="w-full bg-slate-950 p-3 rounded-lg text-sm mb-2 border border-slate-700 focus:border-indigo-500 outline-none"
+                        rows={3}
+                        placeholder="Spill the tea..."
+                        value={newContent}
+                        onChange={e => setNewContent(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white">Cancel</button>
+                        <button onClick={handleCreate} className="px-6 py-2 bg-green-600 text-white text-xs font-bold rounded-lg flex items-center gap-2">
+                            <Send size={14} /> Post Live
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {loading && <div className="text-center text-slate-500 py-10">Loading tea...</div>}
 
