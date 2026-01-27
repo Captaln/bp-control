@@ -106,10 +106,10 @@ export const CreateConfessionModal: React.FC<CreateModalProps> = ({ onClose, onP
                         disabled={loading || !content}
                         className="w-full bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dark disabled:opacity-50 transition"
                     >
-                        {loading ? 'Posting...' : 'Post Anonymously 🚀'}
+                        {loading ? 'Posting...' : 'Post Anonymously'}
                     </button>
                     <p className="text-[10px] text-center text-slate-400 mt-2">
-                        Account age > 3 days required. Be kind.
+                        Account age &gt; 3 days required. Be kind.
                     </p>
                 </div>
             </div>

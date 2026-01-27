@@ -243,14 +243,14 @@ const MemeCard: React.FC<{
       const data = await res.json();
 
       if (res.ok && data.success) {
-        onShowToast("✅ Report Sent Successfully!");
+        onShowToast("Report Sent Successfully!");
       } else {
         console.error("Report Error:", data);
-        onShowToast("❌ Failed to send report.");
+        onShowToast("Failed to send report.");
       }
     } catch (e) {
       console.error("Report Network Error:", e);
-      onShowToast("❌ Error sending report.");
+      onShowToast("Error sending report.");
     }
   };
 
