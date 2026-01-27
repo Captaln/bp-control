@@ -52,11 +52,7 @@ export const Vent: React.FC = () => {
 
   const handlePost = async (payload: any) => {
     // Get Token logic
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.VITE_SUPABASE_URL!,
-      process.env.VITE_SUPABASE_ANON_KEY!
-    );
+    const { supabase } = await import('@/lib/supabase');
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
