@@ -54,7 +54,7 @@ export const ConfessionsManagement = () => {
         const { error } = await supabase.from('confessions').insert({
             content: newContent,
             type: newType,
-            background_id: 'midnight', // Default
+            background_style: 'midnight', // Default
             is_approved: true, // Auto approve admin posts
             user_id: (await supabase.auth.getUser()).data.user?.id
         });

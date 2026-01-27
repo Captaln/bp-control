@@ -22,6 +22,16 @@ export const CreateConfessionModal: React.FC<CreateModalProps> = ({ onClose, onP
 
     const handleSubmit = async () => {
         if (!content.trim()) return;
+
+        // Rule: Auto-detect Short Stories
+        if (mode === 'post' && content.length < 150) {
+            const confirmSwitch = confirm("This is short enough to be a Story! 🎨\n\nWant to switch to Story mode to add a cool background?");
+            if (confirmSwitch) {
+                setMode('story');
+                return; // Let user customize background
+            }
+        }
+
         setLoading(true);
         try {
             await onPost({
@@ -32,8 +42,8 @@ export const CreateConfessionModal: React.FC<CreateModalProps> = ({ onClose, onP
                 allow_reactions: true
             });
             onClose();
-        } catch (e) {
-            alert("Failed to post");
+        } catch (e: any) {
+            alert(e.message || "Failed to post");
             setLoading(false);
         }
     };
