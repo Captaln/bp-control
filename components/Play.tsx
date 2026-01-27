@@ -1,12 +1,32 @@
 import React from 'react';
 import { AppView } from '../types';
 import { Grid3X3, Hammer, Waves, ArrowRight, Beaker, BrainCircuit, X, Zap, Anchor } from 'lucide-react';
+import { trackGameStart } from '../services/analytics';
 
 interface PlayProps {
     onNavigate: (view: AppView) => void;
 }
 
+// Map of view to game name for analytics
+const GAME_NAMES: Record<string, string> = {
+    [AppView.GAME_GROUNDING]: 'grounding',
+    [AppView.GAME_POPIT]: 'popit',
+    [AppView.GAME_SMASH]: 'smash',
+    [AppView.GAME_WHACK]: 'whack',
+    [AppView.GAME_SORT]: 'sort',
+    [AppView.GAME_MATCH]: 'match',
+    [AppView.GAME_TICTACTOE]: 'tictactoe',
+    [AppView.GAME_ZEN]: 'zen',
+};
+
 export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
+    // Wrapper that tracks game start before navigating
+    const playGame = (view: AppView) => {
+        const gameName = GAME_NAMES[view] || 'unknown';
+        trackGameStart(gameName);
+        onNavigate(view);
+    };
+
     return (
         <div className="h-full w-full bg-slate-50 p-6 flex flex-col pb-24 overflow-y-auto">
             <header className="mb-6 mt-2">
@@ -17,7 +37,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
             <div className="space-y-4">
                 {/* Grounding Card - Prominently Placed */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_GROUNDING)}
+                    onClick={() => playGame(AppView.GAME_GROUNDING)}
                     className="w-full bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 rounded-2xl shadow-md border border-slate-600 flex items-center justify-between group active:scale-95 transition-all mb-2"
                 >
                     <div className="flex items-center gap-4">
@@ -34,7 +54,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Pop It Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_POPIT)}
+                    onClick={() => playGame(AppView.GAME_POPIT)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -51,7 +71,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Smash It Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_SMASH)}
+                    onClick={() => playGame(AppView.GAME_SMASH)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -68,7 +88,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Whack-A-Mood Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_WHACK)}
+                    onClick={() => playGame(AppView.GAME_WHACK)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -85,7 +105,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Liquid Logic Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_SORT)}
+                    onClick={() => playGame(AppView.GAME_SORT)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -102,7 +122,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Memory Match Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_MATCH)}
+                    onClick={() => playGame(AppView.GAME_MATCH)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -119,7 +139,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Tic Tac Toe Card */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_TICTACTOE)}
+                    onClick={() => playGame(AppView.GAME_TICTACTOE)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">
@@ -136,7 +156,7 @@ export const Play: React.FC<PlayProps> = ({ onNavigate }) => {
 
                 {/* Zen Flow Card (Fixed Styling) */}
                 <button
-                    onClick={() => onNavigate(AppView.GAME_ZEN)}
+                    onClick={() => playGame(AppView.GAME_ZEN)}
                     className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-95 transition-all"
                 >
                     <div className="flex items-center gap-4">

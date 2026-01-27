@@ -1,200 +1,184 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { getVentResponse } from '../services/geminiService';
-import { Send, Trash2, User, Sparkles, Flame, Loader2, ArrowDown } from 'lucide-react';
-import { Message } from '../types';
+import React, { useState, useEffect } from 'react';
+import { VentChat } from './VentChat';
+import { StoryList } from './confessions/StoryList';
+import { ConfessionCard } from './confessions/ConfessionCard';
+import { CreateConfessionModal } from './confessions/CreateConfessionModal';
+import { StoryViewer } from './confessions/StoryViewer';
+import { MessageSquare, Heart, Plus, Bell, RefreshCw, Zap } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { getUserProfile } from '../lib/profile';
+
+const API_BASE_URL = Capacitor.isNativePlatform()
+  ? "https://bp-control.vercel.app/api"
+  : "/api";
 
 export const Vent: React.FC = () => {
-  // Initialize state from localStorage if available
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const saved = localStorage.getItem('bp_vent_history');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to parse chat history", e);
-    }
-    // Default initial message if no history found
-    return [{ 
-      id: 'init', 
-      role: 'model', 
-      text: "I'm listening. Tell me what's bothering you, or switch to 'Roast Mode' if you want to laugh about it." 
-    }];
-  });
+  const [activeTab, setActiveTab] = useState<'chat' | 'confessions'>('chat');
 
-  const [input, setInput] = useState('');
+  // Confessions Data
+  const [stories, setStories] = useState<any[]>([]);
+  const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<'calm' | 'roast'>('calm');
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('bp_vent_history', JSON.stringify(messages));
-  }, [messages]);
-
-  // Auto-scroll to bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingStoryIndex, setViewingStoryIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
+    if (activeTab === 'confessions') {
+      fetchConfessions();
+      fetchStories();
+    }
+  }, [activeTab]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-
-    const userText = input.trim();
-    const newMessage: Message = { id: Date.now().toString(), role: 'user', text: userText };
-    
-    // Optimistic Update
-    setMessages(prev => [...prev, newMessage]);
-    setInput('');
+  const fetchConfessions = async () => {
     setLoading(true);
-
     try {
-      // Pass the *current* messages (before this update technically, but we need to include the new one in the request or logic)
-      // Actually, React state updates are async. We should pass the array we just constructed.
-      // We will pass `messages` (current history) and `userText` (new input).
-      // The service will handle merging them for the API call.
-      
-      const responseText = await getVentResponse(messages, userText, mode);
+      const res = await fetch(`${API_BASE_URL}/confessions/feed?type=post`);
+      const data = await res.json();
+      if (Array.isArray(data)) setFeed(data);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
 
-      const botMessage: Message = { 
-        id: (Date.now() + 1).toString(), 
-        role: 'model', 
-        text: responseText 
-      };
-      setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { 
-        id: Date.now().toString(), 
-        role: 'model', 
-        text: "I'm having a little trouble connecting. Take a deep breath and try again in a moment." 
-      }]);
-    } finally {
-      setLoading(false);
+  const fetchStories = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/confessions/feed?type=stories`);
+      const data = await res.json();
+      if (Array.isArray(data)) setStories(data);
+    } catch (e) { console.error(e); }
+  };
+
+  const handlePost = async (payload: any) => {
+    // Get Token logic
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.VITE_SUPABASE_URL!,
+      process.env.VITE_SUPABASE_ANON_KEY!
+    );
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      alert("You must be logged in to post."); // Should show nice toast
+      return;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/confessions/post`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      if (payload.type === 'story') fetchStories();
+      else fetchConfessions();
+    } else {
+      throw new Error(data.error);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleStoryTap = (index: number) => {
+    if (index === -1) {
+      setShowCreateModal(true);
+    } else {
+      setViewingStoryIndex(index);
     }
-  };
-
-  const clearChat = () => {
-    setMessages([{ 
-      id: Date.now().toString(), 
-      role: 'model', 
-      text: "Chat cleared. I'm ready for a fresh start." 
-    }]);
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-slate-50 relative">
-      {/* Header & Mode Switcher */}
-      <div className="bg-white p-4 shadow-sm z-10 flex flex-col gap-3">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">Venting Vault</h2>
-          <button onClick={clearChat} className="text-slate-400 hover:text-red-500 transition">
-            <Trash2 size={20} />
-          </button>
-        </div>
-        
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-          <button 
-            onClick={() => setMode('calm')}
-            className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              mode === 'calm' 
-                ? 'bg-white text-teal-600 shadow-sm ring-1 ring-black/5' 
-                : 'text-slate-500 hover:text-slate-600'
-            }`}
+    <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-900 relative">
+      {/* Tab Switcher */}
+      <div className="bg-white dark:bg-slate-800 p-2 shadow-sm z-10">
+        <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-xl relative">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all relative z-10 flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}
           >
-            <Sparkles size={16} />
-            Calm Coach
+            <MessageSquare size={16} /> Chat Bot
           </button>
-          <button 
-            onClick={() => setMode('roast')}
-            className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              mode === 'roast' 
-                ? 'bg-white text-orange-500 shadow-sm ring-1 ring-black/5' 
-                : 'text-slate-500 hover:text-slate-600'
-            }`}
+          <button
+            onClick={() => setActiveTab('confessions')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all relative z-10 flex items-center justify-center gap-2 ${activeTab === 'confessions' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-500' : 'text-slate-500'}`}
           >
-            <Flame size={16} />
-            Roast Mode
+            <Zap size={16} /> Confessions
           </button>
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-4">
-        {messages.map((msg) => {
-          const isUser = msg.role === 'user';
-          return (
-            <div key={msg.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <div 
-                className={`max-w-[85%] p-3.5 text-sm md:text-base shadow-sm leading-relaxed whitespace-pre-wrap ${
-                  isUser 
-                    ? 'bg-slate-800 text-white rounded-2xl rounded-tr-sm' 
-                    : mode === 'calm'
-                      ? 'bg-teal-50 text-slate-800 border border-teal-100 rounded-2xl rounded-tl-sm'
-                      : 'bg-orange-50 text-slate-800 border border-orange-100 rounded-2xl rounded-tl-sm'
-                }`}
-              >
-                {!isUser && (
-                   <div className={`text-[10px] font-bold mb-1 uppercase tracking-wide opacity-50 ${mode === 'calm' ? 'text-teal-700' : 'text-orange-700'}`}>
-                     {mode === 'calm' ? 'Calm Coach' : 'Roast Master'}
-                   </div>
-                )}
-                {msg.text}
-              </div>
+      {/* Content */}
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'chat' ? (
+          <VentChat />
+        ) : (
+          <div className="h-full overflow-y-auto pb-20 relative">
+            {/* Pull to Refresh hint could go here */}
+
+            {/* Stories Rail */}
+            <div className="pt-4 pb-2 mb-2 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800/50">
+              <StoryList stories={stories} onOpen={handleStoryTap} />
             </div>
-          );
-        })}
-        
-        {loading && (
-          <div className="flex justify-start w-full">
-            <div className="bg-white border border-slate-100 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin text-slate-400" />
-              <span className="text-xs text-slate-400 font-medium">Thinking...</span>
+
+            {/* Feed */}
+            <div className="px-4 space-y-4">
+              {loading && <div className="text-center py-8 text-slate-400 font-medium animate-pulse">Loading tea... ☕</div>}
+
+              {!loading && feed.length === 0 && (
+                <div className="text-center py-10 opacity-50">
+                  <p className="text-4xl mb-2">🦗</p>
+                  <p className="font-bold">It's quiet in here...</p>
+                  <p className="text-xs">Be the first to confess!</p>
+                </div>
+              )}
+
+              {feed.map((item, idx) => (
+                <React.Fragment key={item.id}>
+                  <ConfessionCard
+                    item={item}
+                    onReact={() => { }}
+                    onComment={() => { }}
+                  />
+                  {/* Native Ad Mockup at index 5 */}
+                  {idx === 5 && (
+                    <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 mb-4 text-center shadow-sm">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Sponsored</p>
+                      <p className="font-bold text-slate-700 dark:text-slate-200 mb-2">"My therapist told me to download this app."</p>
+                      <button className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 px-4 py-2 rounded-full font-bold shadow-sm hover:scale-105 transition">Read Their Story</button>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+              <div className="h-24"></div>
             </div>
+
+            {/* FAB */}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition z-30"
+            >
+              <Plus size={28} />
+            </button>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 bg-white border-t border-slate-100 pb-20"> {/* pb-20 for nav bar clearance */}
-        <div className="flex gap-2 items-end bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={mode === 'calm' ? "I'm feeling angry about..." : "Roast this situation..."}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 resize-none max-h-32 py-2 px-2 text-base"
-            rows={1}
-            style={{ minHeight: '44px' }}
-          />
-          <button 
-            onClick={handleSend}
-            disabled={!input.trim() || loading}
-            className={`p-3 rounded-xl transition-all duration-200 flex-shrink-0 ${
-              input.trim() && !loading
-                ? mode === 'calm' 
-                  ? 'bg-teal-500 text-white shadow-md hover:bg-teal-600 active:scale-95'
-                  : 'bg-orange-500 text-white shadow-md hover:bg-orange-600 active:scale-95'
-                : 'bg-slate-200 text-slate-400'
-            }`}
-          >
-            <Send size={20} />
-          </button>
-        </div>
-      </div>
+      {/* Modals */}
+      {showCreateModal && (
+        <CreateConfessionModal
+          onClose={() => setShowCreateModal(false)}
+          onPost={handlePost}
+        />
+      )}
+
+      {viewingStoryIndex !== null && (
+        <StoryViewer
+          stories={stories}
+          initialIndex={viewingStoryIndex}
+          onClose={() => setViewingStoryIndex(null)}
+        />
+      )}
     </div>
   );
 };

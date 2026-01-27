@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, RefreshCw, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getDisplayUsername } from '../lib/profile';
 
 interface Message {
     id: number;
@@ -9,34 +10,26 @@ interface Message {
     message: string;
 }
 
-// Generate random username
-const generateUsername = () => {
-    const adjectives = ['Happy', 'Angry', 'Chill', 'Wild', 'Sleepy', 'Hyper', 'Calm', 'Crazy'];
-    const nouns = ['Panda', 'Tiger', 'Eagle', 'Wolf', 'Bear', 'Fox', 'Owl', 'Lion'];
-    const num = Math.floor(Math.random() * 999);
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    return `${adj}${noun}${num}`;
-};
-
 export const GlobalChat: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
-    const [username] = useState(() => {
-        // Get or create username in localStorage
-        const saved = localStorage.getItem('bp_chat_username');
-        if (saved) return saved;
-        const newName = generateUsername();
-        localStorage.setItem('bp_chat_username', newName);
-        return newName;
-    });
+    const [username, setUsername] = useState<string>('Loading...');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [cooldown, setCooldown] = useState(0);
 
-
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Load username on mount
+    useEffect(() => {
+        const loadUsername = async () => {
+            const name = await getDisplayUsername();
+            setUsername(name);
+        };
+        loadUsername();
+    }, []);
+
 
     // Fetch initial messages
     useEffect(() => {
@@ -48,7 +41,16 @@ export const GlobalChat: React.FC = () => {
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'messages' },
                 (payload) => {
-                    setMessages(prev => [...prev, payload.new as Message]);
+                    const newMsg = payload.new as Message;
+                    setMessages(prev => {
+                        // Remove potential optimistic duplicate
+                        const filtered = prev.filter(m => {
+                            const isOptimistic = m.id > 1700000000000; // Simple check for timestamp-based IDs
+                            const isMatch = m.username === newMsg.username && m.message === newMsg.message;
+                            return !(isOptimistic && isMatch);
+                        });
+                        return [...filtered, newMsg];
+                    });
                 }
             )
             .subscribe();
@@ -94,20 +96,38 @@ export const GlobalChat: React.FC = () => {
     const sendMessage = async () => {
         if (!newMessage.trim() || cooldown > 0 || sending) return;
 
+        const messageText = newMessage.trim();
+        const tempId = Date.now(); // Temporary ID for optimistic update
+
+        // 1. Optimistic Update: Show immediately
+        const optimisticMsg: Message = {
+            id: tempId,
+            created_at: new Date().toISOString(),
+            username: username,
+            message: messageText
+        };
+
+        setMessages(prev => [...prev, optimisticMsg]);
+        setNewMessage(''); // Clear input immediately
+        setCooldown(30);
+        inputRef.current?.blur();
         setSending(true);
+
         try {
             const { error } = await supabase
                 .from('messages')
-                .insert([{ username, message: newMessage.trim() }]);
+                .insert([{ username, message: messageText }]);
 
             if (error) throw error;
 
-            setNewMessage('');
-            setCooldown(30); // 30 second cooldown
-            inputRef.current?.blur();
+            // Note: The realtime subscription will pick up the true message shortly.
+            // We'll handle deduplication in the subscription callback or just let it swap.
+            // Ideally, we'd remove the optimistic one here, but let's do it in the subscription for smoother sync.
         } catch (err) {
             console.error('Error sending message:', err);
             alert('Failed to send message. Try again.');
+            // Rollback on error
+            setMessages(prev => prev.filter(m => m.id !== tempId));
         } finally {
             setSending(false);
         }
@@ -124,7 +144,7 @@ export const GlobalChat: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-white font-bold text-lg">Global Vent Room</h1>
-                        <p className="text-slate-400 text-xs">Anonymous chat • Be respectful</p>
+                        <p className="text-slate-400 text-xs truncate">Anonymous chat • Be respectful</p>
                     </div>
                     <button
                         onClick={fetchMessages}
@@ -159,7 +179,7 @@ export const GlobalChat: React.FC = () => {
                                 ? 'bg-blue-600 text-white rounded-br-sm'
                                 : 'bg-slate-800 text-white rounded-bl-sm'
                                 }`}>
-                                <p className="text-[10px] font-bold opacity-70 mb-1">
+                                <p className="text-[10px] font-bold opacity-70 mb-1 break-words">
                                     {msg.username === username ? 'You' : msg.username}
                                 </p>
                                 <p className="text-sm break-words">{msg.message}</p>

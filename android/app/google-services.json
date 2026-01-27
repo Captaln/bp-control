@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "68800673509",
+        "project_id": "bp-control-98f9b",
+        "storage_bucket": "bp-control-98f9b.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:68800673509:android:db190eb062e04fce2ac60c",
+                "android_client_info": {
+                    "package_name": "com.bpcontrol.app"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyC6XtWmAas2IDcrBxIN4FlMvyqWvYgG9j0"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

@@ -16,7 +16,8 @@ export enum AppView {
   GAME_WHACK = 'GAME_WHACK',
   // New Features
   SMILE = 'SMILE',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  CREATOR = 'CREATOR'
 }
 
 export interface Message {
@@ -48,4 +49,5 @@ export interface Meme {
   title: string;
   likes: number;
   category: string;
+  description?: string;
 }

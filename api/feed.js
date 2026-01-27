@@ -1,46 +1,63 @@
-import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { r2, BUCKET_NAME, PUBLIC_DOMAIN } from "./r2.js";
+import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+export const config = {
+    runtime: 'edge',
+};
+
+export default async function handler(req) {
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
 
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    if (req.method !== 'GET') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return new Response(null, { status: 200, headers: corsHeaders });
     }
 
     try {
-        const command = new ListObjectsV2Command({
-            Bucket: BUCKET_NAME,
-            Prefix: 'memes/', // We will store files in a 'memes' folder
+        const supabase = createClient(
+            'https://pdaqudmglhlaptuumedf.supabase.co',
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        const { searchParams } = new URL(req.url);
+        const singleId = searchParams.get('id');
+
+        let query = supabase
+            .from('content_uploads')
+            .select('*');
+
+        if (singleId) {
+            query = query.eq('id', singleId).limit(1);
+        } else {
+            query = query.order('created_at', { ascending: false }).limit(50);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        // Transform to Feed items
+        const feed = data.map(item => ({
+            id: item.id,
+            url: item.url,
+            type: item.type,
+            timestamp: item.created_at,
+            category: item.category,
+            description: item.description, // Include description
+            likes: Math.floor(Math.random() * 500) + 50
+        }));
+
+        return new Response(JSON.stringify(feed), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-        const data = await r2.send(command);
-
-        // Transform R2 data into Feed items
-        const feed = (data.Contents || [])
-            .filter(item => item.Size > 0) // Filter out folders
-            .map(item => {
-                const isVideo = item.Key.endsWith('.mp4') || item.Key.endsWith('.mov');
-                return {
-                    id: item.ETag.replace(/"/g, ''), // Use ETag as ID
-                    url: `${PUBLIC_DOMAIN}/${item.Key}`,
-                    type: isVideo ? 'video' : 'image',
-                    timestamp: item.LastModified,
-                    likes: Math.floor(Math.random() * 500) + 50 // Fake likes for now (or store in DB later)
-                };
-            })
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Newest first
-
-        return res.status(200).json(feed);
     } catch (error) {
-        console.error("R2 List Error:", error);
-        return res.status(500).json({ error: 'Failed to fetch feed', details: error.message });
+        console.error("Feed Error:", error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch feed', details: error.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
     }
 }

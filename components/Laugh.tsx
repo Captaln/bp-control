@@ -1,69 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Share2, Bookmark, Download, Play, Pause, Volume2, VolumeX, Tag } from 'lucide-react';
+import { Heart, Share2, Bookmark, Download, Play, Pause, Volume2, VolumeX, Tag, Flag } from 'lucide-react';
 import { Meme } from '../types';
 
 // Mock Data Service (In a real app, this comes from your Admin Backend)
-const MOCK_MEMES: Meme[] = [
-  {
-    id: '1',
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1531259683007-016a7b628fc3?auto=format&fit=crop&w=800&q=80',
-    title: 'When the code works on the first try',
-    likes: 1240,
-    category: 'Tech Life'
-  },
-  {
-    id: '2',
-    type: 'video',
-    // Using a reliable placeholder video
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-driving-in-city-traffic-at-night-4155-large.mp4',
-    title: 'Trying to stay calm in traffic like...',
-    likes: 856,
-    category: 'Relatable'
-  },
-  {
-    id: '3',
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80',
-    title: 'My dog judging my life choices',
-    likes: 3421,
-    category: 'Animal Antics'
-  },
-  {
-    id: '4',
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=800&q=80',
-    title: 'Monday mornings be like',
-    likes: 950,
-    category: 'Work Humor'
-  },
-  {
-    id: '5',
-    type: 'video',
-    // Using a reliable placeholder video
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-young-wild-cat-resting-on-the-grass-4235-large.mp4',
-    title: 'If I fits, I sits (Stress relief edition)',
-    likes: 5100,
-    category: 'Animal Antics'
-  }
-];
+const MOCK_MEMES: Meme[] = [];
 
-const CATEGORIES = ['All', 'Work Humor', 'Animal Antics', 'Relatable', 'Tech Life'];
 
-export const Laugh: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'feed' | 'saved'>('feed');
-  const [activeCategory, setActiveCategory] = useState('All');
+export const Laugh: React.FC<{ initialMemeId?: string | null }> = ({ initialMemeId }) => {
+  // State
+  const [memes, setMemes] = useState<Meme[]>([]);
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [memes, setMemes] = useState<Meme[]>(MOCK_MEMES);
+  const [activeTab, setActiveTab] = useState<'feed' | 'saved'>('feed');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load interactions from local storage
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   useEffect(() => {
-    const savedLiked = localStorage.getItem('bp_liked_memes');
-    const savedSaved = localStorage.getItem('bp_saved_memes');
-    if (savedLiked) setLikedIds(JSON.parse(savedLiked));
-    if (savedSaved) setSavedIds(JSON.parse(savedSaved));
-  }, []);
+    // 1. Fetch from Real API
+    let url = '/api/feed';
+    if (initialMemeId) {
+      url += `?id=${initialMemeId}`;
+    }
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          // Transform if needed
+          const mapped = data.map((item: any) => ({
+            id: item.id || Math.random().toString(),
+            type: item.type || 'image',
+            url: item.url,
+            title: item.category || 'Meme', // Fallback
+            description: item.description || '',
+            likes: item.likes || 0,
+            category: item.category || 'General'
+          }));
+
+          if (initialMemeId && mapped.length > 0) {
+            // If deep link, show only that one or put it first? 
+            // API returns only that one if ?id is passed.
+            console.log("Loaded Deep Linked Meme:", mapped);
+          }
+
+          setMemes(mapped);
+        }
+      })
+      .catch(err => console.error("Feed fetch failed", err));
+
+    // 2. Load interactions from LocalStorage
+    const savedLikes = localStorage.getItem('bp_liked_memes');
+    if (savedLikes) setLikedIds(JSON.parse(savedLikes));
+
+    const savedSaves = localStorage.getItem('bp_saved_memes');
+    if (savedSaves) setSavedIds(JSON.parse(savedSaves));
+  }, [initialMemeId]);
+
+  const CATEGORIES = ['All', 'Work Humor', 'Animal Antics', 'Relatable', 'Tech Life'];
+
+
 
   const toggleLike = (id: string) => {
     let newLikes;
@@ -88,19 +88,20 @@ export const Laugh: React.FC = () => {
   };
 
   const handleShare = async (meme: Meme) => {
+    const shareUrl = `${window.location.origin}?meme=${meme.id}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'BP Control Meme',
           text: meme.title,
-          url: meme.url,
+          url: shareUrl,
         });
       } catch (error) {
         console.log('Error sharing:', error);
       }
     } else {
       alert('Share feature not supported on this browser, but URL copied!');
-      navigator.clipboard.writeText(meme.url);
+      navigator.clipboard.writeText(shareUrl);
     }
   };
 
@@ -116,8 +117,8 @@ export const Laugh: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const displayedMemes = (activeTab === 'feed' 
-    ? memes 
+  const displayedMemes = (activeTab === 'feed'
+    ? memes
     : memes.filter(m => savedIds.includes(m.id))
   ).filter(m => activeCategory === 'All' || m.category === activeCategory);
 
@@ -126,16 +127,16 @@ export const Laugh: React.FC = () => {
       {/* Header */}
       <div className="bg-white pt-4 pb-2 shadow-sm z-10 sticky top-0 flex flex-col gap-3">
         <h2 className="text-xl font-bold text-slate-800 text-center">Daily Smile Feed</h2>
-        
+
         {/* Tab Switcher */}
         <div className="flex bg-slate-100 p-1 rounded-xl mx-4">
-          <button 
+          <button
             onClick={() => setActiveTab('feed')}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'feed' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
           >
             Fresh Memes
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('saved')}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'saved' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
           >
@@ -145,19 +146,18 @@ export const Laugh: React.FC = () => {
 
         {/* Category Filter */}
         <div className="flex gap-2 overflow-x-auto px-4 pb-2 no-scrollbar items-center">
-            {CATEGORIES.map(cat => (
-                <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-colors flex-shrink-0 ${
-                        activeCategory === cat
-                        ? 'bg-slate-800 text-white border-slate-800'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                    }`}
-                >
-                    {cat}
-                </button>
-            ))}
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-colors flex-shrink-0 ${activeCategory === cat
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -171,19 +171,28 @@ export const Laugh: React.FC = () => {
           </div>
         ) : (
           displayedMemes.map(meme => (
-            <MemeCard 
-              key={meme.id} 
-              meme={meme} 
+            <MemeCard
+              key={meme.id}
+              meme={meme}
               isLiked={likedIds.includes(meme.id)}
               isSaved={savedIds.includes(meme.id)}
               onLike={() => toggleLike(meme.id)}
               onSave={() => toggleSave(meme.id)}
               onShare={() => handleShare(meme)}
               onDownload={() => handleDownload(meme)}
+              onShowToast={(msg) => showToast(msg)}
             />
           ))
         )}
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="w-2 h-2 rounded-full bg-green-400"></div>
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -196,10 +205,44 @@ const MemeCard: React.FC<{
   onSave: () => void;
   onShare: () => void;
   onDownload: () => void;
-}> = ({ meme, isLiked, isSaved, onLike, onSave, onShare, onDownload }) => {
+  onShowToast: (msg: string) => void;
+}> = ({ meme, isLiked, isSaved, onLike, onSave, onShare, onDownload, onShowToast }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const handleReport = async () => {
+    const reason = prompt("Why are you reporting this content?");
+    if (!reason) return;
+
+    onShowToast("Sending report...");
+
+    try {
+      const res = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId: meme.id, contentUrl: meme.url, reason })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        onShowToast("✅ Report Sent Successfully!");
+      } else {
+        console.error("Report Error:", data);
+        onShowToast("❌ Failed to send report.");
+      }
+    } catch (e) {
+      console.error("Report Network Error:", e);
+      onShowToast("❌ Error sending report.");
+    }
+  };
+
+  const handleCopyLink = () => {
+    const shareUrl = `${window.location.origin}?meme=${meme.id}`;
+    navigator.clipboard.writeText(shareUrl);
+    onShowToast("🔗 Link Copied to Clipboard!");
+  };
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -225,7 +268,7 @@ const MemeCard: React.FC<{
           <img src={meme.url} alt={meme.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full relative cursor-pointer" onClick={togglePlay}>
-            <video 
+            <video
               ref={videoRef}
               src={meme.url}
               className="w-full h-full object-cover"
@@ -242,7 +285,7 @@ const MemeCard: React.FC<{
               </div>
             )}
             {/* Sound Toggle */}
-            <button 
+            <button
               onClick={toggleMute}
               className="absolute bottom-3 right-3 p-2 bg-black/50 rounded-full text-white backdrop-blur-md"
             >
@@ -250,31 +293,34 @@ const MemeCard: React.FC<{
             </button>
           </div>
         )}
-         {/* Category Tag Overlay */}
-         <div className="absolute top-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded-md text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-            <Tag size={10} />
-            {meme.category}
-         </div>
+        {/* Category Tag Overlay */}
+        <div className="absolute top-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded-md text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+          <Tag size={10} />
+          {meme.category}
+        </div>
       </div>
 
       {/* Actions Bar */}
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
           <div className="flex space-x-4">
-            <button 
+            <button
               onClick={onLike}
               className={`transition-transform active:scale-75 ${isLiked ? 'text-red-500' : 'text-slate-800'}`}
             >
               <Heart size={26} className={isLiked ? 'fill-current' : ''} />
             </button>
-            <button onClick={onShare} className="text-slate-800 hover:text-indigo-600 transition">
+            <button onClick={handleCopyLink} className="text-slate-800 hover:text-indigo-600 transition" title="Copy Link">
               <Share2 size={26} />
             </button>
             <button onClick={onDownload} className="text-slate-800 hover:text-indigo-600 transition">
               <Download size={26} />
             </button>
+            <button onClick={handleReport} className="text-slate-400 hover:text-red-500 transition" title="Report">
+              <Flag size={26} />
+            </button>
           </div>
-          <button 
+          <button
             onClick={onSave}
             className={`transition-colors ${isSaved ? 'text-indigo-600' : 'text-slate-800'}`}
           >
@@ -284,11 +330,18 @@ const MemeCard: React.FC<{
 
         {/* Caption */}
         <div>
-          <p className="font-bold text-slate-800 text-sm mb-1">{meme.likes + (isLiked ? 1 : 0)} likes</p>
-          <p className="text-slate-700">
-            <span className="font-bold mr-2">Admin</span>
-            {meme.title}
-          </p>
+          {/* Caption */}
+          <div className="mt-2">
+            <p className="text-sm text-slate-900">
+              <span className="font-bold mr-2">@bp_official</span>
+              {meme.description ? (
+                <span className="whitespace-pre-wrap">{meme.description}</span>
+              ) : (
+                <span className="italic text-slate-500">{meme.title}</span>
+              )}
+            </p>
+            <p className="font-bold text-slate-500 text-[10px] mt-1 uppercase tracking-wider">{meme.likes + (isLiked ? 1 : 0)} likes</p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,48 +1,51 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { r2, BUCKET_NAME } from "./r2.js";
+import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req, res) {
+export const config = {
+    runtime: 'edge',
+};
+
+export default async function handler(req) {
     // CORS Headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    };
 
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        return new Response(null, { status: 200, headers: corsHeaders });
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
     }
 
     try {
-        const { reason, contentId, contentUrl } = req.body;
+        const { reason, contentId, contentUrl } = await req.json();
 
         if (!reason || !contentId) {
-            return res.status(400).json({ error: 'Missing details' });
+            return new Response(JSON.stringify({ error: 'Missing details' }), { status: 400, headers: corsHeaders });
         }
 
-        const reportData = {
-            id: crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-            contentId,
-            contentUrl,
-            reason,
-            status: 'pending' // pending review
-        };
+        const supabase = createClient(
+            process.env.VITE_SUPABASE_URL || 'https://pdaqudmglhlaptuumedf.supabase.co',
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
 
-        const key = `reports/${reportData.timestamp}-${contentId}.json`;
+        const { error } = await supabase
+            .from('content_reports')
+            .insert({
+                content_id: contentId,
+                content_url: contentUrl,
+                reason,
+                status: 'pending'
+            });
 
-        await r2.send(new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: key,
-            Body: JSON.stringify(reportData, null, 2),
-            ContentType: 'application/json'
-        }));
+        if (error) throw error;
 
-        return res.status(200).json({ success: true, message: 'Report submitted' });
+        return new Response(JSON.stringify({ success: true, message: 'Report submitted' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
         console.error("Report Error:", error);
-        return res.status(500).json({ error: 'Failed to submit report' });
+        return new Response(JSON.stringify({ error: 'Failed to submit report: ' + error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 }

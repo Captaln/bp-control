@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Share2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Share2, AlertTriangle, RotateCcw, Bookmark } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Toast } from '@capacitor/toast';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { AnimatePresence } from 'framer-motion';
 
 const API_BASE_URL = Capacitor.isNativePlatform()
@@ -37,6 +38,12 @@ export const Smile = () => {
     const [loading, setLoading] = useState(true);
     const [reportId, setReportId] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState('all');
+    // Bookmarks (Watch Later)
+    const [bookmarks, setBookmarks] = useState<string[]>(() => {
+        const saved = localStorage.getItem('bp_bookmarks');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [viewMode, setViewMode] = useState<'feed' | 'saved'>('feed');
 
     const hasFetched = useRef(false);
 
@@ -47,12 +54,16 @@ export const Smile = () => {
             const res = await fetch(`${API_BASE_URL}/feed`);
             const data = await res.json();
             if (Array.isArray(data)) {
+                // "Smart Shuffle"
                 for (let i = data.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [data[i], data[j]] = [data[j], data[i]];
                 }
                 setAllItems(data);
-                setFilteredItems(data);
+                if (viewMode === 'feed') {
+                    if (activeCategory === 'all') setFilteredItems(data);
+                    else setFilteredItems(data.filter((item: FeedItem) => getCategory(item.id) === activeCategory));
+                }
                 hasFetched.current = true;
             }
         } catch (error) {
@@ -60,17 +71,35 @@ export const Smile = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeCategory, viewMode]);
+
+    // Update filtered items when bookmarks/viewMode changes
+    useEffect(() => {
+        if (viewMode === 'saved') {
+            const savedItems = allItems.filter(item => bookmarks.includes(item.id));
+            setFilteredItems(savedItems);
+        } else {
+            if (activeCategory === 'all') setFilteredItems(allItems);
+            else setFilteredItems(allItems.filter(item => getCategory(item.id) === activeCategory));
+        }
+    }, [viewMode, bookmarks, allItems, activeCategory]);
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
     const handleCategoryChange = (cat: string) => {
+        setViewMode('feed');
         setActiveCategory(cat);
-        if (cat === 'all') {
-            setFilteredItems(allItems);
-        } else {
-            setFilteredItems(allItems.filter(item => getCategory(item.id) === cat));
-        }
+    };
+
+    const toggleBookmark = (id: string) => {
+        setBookmarks(prev => {
+            const newBookmarks = prev.includes(id)
+                ? prev.filter(b => b !== id)
+                : [...prev, id];
+            localStorage.setItem('bp_bookmarks', JSON.stringify(newBookmarks));
+            return newBookmarks;
+        });
+        Toast.show({ text: bookmarks.includes(id) ? 'Removed from Watch Later' : 'Added to Watch Later' });
     };
 
     const handleShare = async (item: FeedItem) => {
@@ -88,50 +117,66 @@ export const Smile = () => {
         if (!reportId) return;
         const item = allItems.find(i => i.id === reportId);
         if (!item) return;
+
+        setReportId(null);
+        await Toast.show({ text: 'Reported.' });
+
         try {
             await fetch(`${API_BASE_URL}/report`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason, contentId: item.id, contentUrl: item.url })
             });
-            await Toast.show({ text: 'Reported.' });
-            setReportId(null);
-        } catch (err) { }
+        } catch (err) { console.error(err); }
     };
 
     return (
         <div className="bg-slate-950 w-full h-full flex flex-col">
 
             {/* FIXED HEADER */}
-            <div className="flex-shrink-0 bg-slate-950 border-b border-slate-800 pt-3 pb-2 px-4 z-10">
+            <div className="flex-shrink-0 bg-slate-950 border-b border-slate-800 pt-3 pb-2 px-4 z-10 transition-all">
                 <div className="flex justify-between items-center mb-2">
-                    <h1 className="text-white font-bold text-lg">Daily Smile</h1>
-                    <button
-                        onClick={() => fetchFeed(true)}
-                        className="bg-slate-800 p-2 rounded-full active:bg-slate-700 transition"
-                    >
-                        <RotateCcw className="text-white" size={16} />
-                    </button>
+                    <h1 className="text-white font-bold text-lg flex items-center gap-2">
+                        {viewMode === 'saved' ? 'Watch Later' : 'Daily Smile'}
+                        {viewMode === 'saved' && <span className="text-xs bg-indigo-600 px-2 py-0.5 rounded text-white">{filteredItems.length}</span>}
+                    </h1>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setViewMode(prev => prev === 'feed' ? 'saved' : 'feed')}
+                            className={`p-2 rounded-full transition ${viewMode === 'saved' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                        >
+                            <Bookmark size={20} fill={viewMode === 'saved' ? "currentColor" : "none"} />
+                        </button>
+                        <button
+                            onClick={() => fetchFeed(true)}
+                            className="bg-slate-800 p-2 rounded-full active:bg-slate-700 transition lg:hover:bg-slate-700"
+                        >
+                            <RotateCcw className="text-white" size={16} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Category Tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => handleCategoryChange(cat)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${activeCategory === cat
+                {/* Category Tabs (Only show in Feed mode) */}
+                {viewMode === 'feed' && (
+                    <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                        {CATEGORIES.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => handleCategoryChange(cat)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${activeCategory === cat
                                     ? 'bg-white text-black'
                                     : 'bg-slate-800 text-slate-300'
-                                }`}
-                        >
-                            {cat === 'all' ? '🔥 All' : `#${cat}`}
-                        </button>
-                    ))}
-                </div>
+                                    }`}
+                            >
+                                {cat === 'all' ? '🔥 All' : `#${cat}`}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* SCROLLABLE FEED - Instagram Style */}
+            {/* SCROLLABLE FEED */}
             <div className="flex-1 overflow-y-auto pb-20">
                 {loading && (
                     <div className="flex items-center justify-center py-20">
@@ -140,8 +185,16 @@ export const Smile = () => {
                 )}
 
                 {filteredItems.length === 0 && !loading && (
-                    <div className="flex items-center justify-center py-20 text-slate-500 text-center px-8">
-                        No memes in this category yet.
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-500 text-center px-8">
+                        {viewMode === 'saved' ? (
+                            <>
+                                <Bookmark size={48} className="mb-4 opacity-20" />
+                                <p>No saved memes yet.</p>
+                                <button onClick={() => setViewMode('feed')} className="mt-4 text-indigo-400 font-bold text-sm">Go to Feed</button>
+                            </>
+                        ) : (
+                            <p>No memes in this category yet.</p>
+                        )}
                     </div>
                 )}
 
@@ -181,6 +234,15 @@ export const Smile = () => {
                                     <Share2 size={20} />
                                     <span className="text-sm font-medium">Share</span>
                                 </button>
+
+                                <button
+                                    onClick={() => toggleBookmark(item.id)}
+                                    className={`flex items-center gap-2 transition ${bookmarks.includes(item.id) ? 'text-indigo-400' : 'text-slate-400 hover:text-indigo-400'}`}
+                                >
+                                    <Bookmark size={20} fill={bookmarks.includes(item.id) ? "currentColor" : "none"} />
+                                    <span className="text-sm font-medium">{bookmarks.includes(item.id) ? 'Saved' : 'Save'}</span>
+                                </button>
+
                                 <button
                                     onClick={() => setReportId(item.id)}
                                     className="flex items-center gap-2 text-slate-500 hover:text-red-400 transition ml-auto"
