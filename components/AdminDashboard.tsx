@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, X, Trash2, Lock, Tag, AlertTriangle, Settings, Check, RefreshCw } from 'lucide-react';
+import { Upload, X, Trash2, Lock, Tag, AlertTriangle, Settings, Check, RefreshCw, Megaphone, MessageSquare, Zap } from 'lucide-react';
 import { AppView } from '../types';
 
 const API_BASE_URL = "https://bp-control.vercel.app/api";
@@ -28,7 +28,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
     const [newPassword, setNewPassword] = useState("");
 
     // Tab State
-    const [currentTab, setCurrentTab] = useState<'upload' | 'moderation' | 'reports' | 'users'>('upload');
+    const [currentTab, setCurrentTab] = useState<'upload' | 'moderation' | 'reports' | 'users' | 'confessions' | 'ads'>('upload');
 
     // Upload & Gallery State
     const [uploading, setUploading] = useState(false);
@@ -45,6 +45,14 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
     const [users, setUsers] = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
 
+    // Confessions State
+    const [confessions, setConfessions] = useState<any[]>([]);
+    const [loadingConfessions, setLoadingConfessions] = useState(false);
+
+    // Ads State
+    const [adConfig, setAdConfig] = useState<any>({});
+    const [loadingAds, setLoadingAds] = useState(false);
+
     // --- Auth Handlers ---
     const handleLogin = async () => {
         setLoginLoading(true);
@@ -58,7 +66,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
 
             if (data.success) {
                 setIsAuthenticated(true);
-                // Pre-load data
+                // Pre-load basic data
                 fetchFiles();
                 fetchPending();
             } else {
@@ -120,10 +128,33 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
 
     const fetchFiles = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/feed`); // Public feed doesn't need auth, but we might want admin specific later
+            const res = await fetch(`${API_BASE_URL}/feed`);
             const data = await res.json();
             setExistingFiles(data);
         } catch (err) { console.error(err); }
+    };
+
+    const fetchConfessions = async () => {
+        setLoadingConfessions(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/confessions?password=${password}`);
+            const data = await res.json();
+            if (Array.isArray(data)) setConfessions(data);
+        } catch (e) { console.error(e); } finally { setLoadingConfessions(false); }
+    };
+
+    const fetchAds = async () => {
+        setLoadingAds(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/ads?password=${password}`);
+            const data = await res.json();
+            // Transform array to object { key: value }
+            const configObj: any = {};
+            if (Array.isArray(data)) {
+                data.forEach((item: any) => configObj[item.key] = item.value);
+            }
+            setAdConfig(configObj);
+        } catch (e) { console.error(e); } finally { setLoadingAds(false); }
     };
 
     useEffect(() => {
@@ -131,6 +162,8 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
             if (currentTab === 'moderation') fetchPending();
             if (currentTab === 'reports') fetchReports();
             if (currentTab === 'users') fetchUsers();
+            if (currentTab === 'confessions') fetchConfessions();
+            if (currentTab === 'ads') fetchAds();
         }
     }, [isAuthenticated, currentTab]);
 
@@ -167,6 +200,34 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
             });
             fetchUsers();
         } catch (e) { alert('Action failed'); }
+    };
+
+    const handleConfessionAction = async (id: string, action: 'APPROVE' | 'REJECT' | 'DELETE') => {
+        const endpoint = action === 'DELETE' ? 'DELETE' : 'POST';
+        try {
+            await fetch(`${API_BASE_URL}/admin/confessions`, {
+                method: endpoint,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, action, id })
+            });
+            if (action === 'DELETE') {
+                setConfessions(prev => prev.filter(c => c.id !== id));
+            } else {
+                fetchConfessions(); // Refresh to see status update
+            }
+        } catch (e) { alert("Failed"); }
+    };
+
+    const handleAdUpdate = async (setting: string, value: string) => {
+        try {
+            await fetch(`${API_BASE_URL}/admin/ads`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, setting, value })
+            });
+            setAdConfig((prev: any) => ({ ...prev, [setting]: value }));
+            alert("Ads Updated! 💸");
+        } catch (e) { alert("Failed"); }
     };
 
     // --- Upload Handlers ---
@@ -241,20 +302,22 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
 
     return (
         <div className="h-full w-full bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden relative">
-            {/* Header */}
-            <div className="p-4 bg-white dark:bg-slate-800 shadow-sm flex justify-between items-center z-10 w-full overflow-x-auto">
-                <div className="flex gap-4">
-                    <button onClick={() => setCurrentTab('upload')} className={`font-bold text-sm ${currentTab === 'upload' ? 'text-primary' : 'text-slate-500'}`}>Uploads</button>
-                    <button onClick={() => setCurrentTab('moderation')} className={`font-bold text-sm ${currentTab === 'moderation' ? 'text-primary' : 'text-slate-500'}`}>Pending ({pendingItems.length})</button>
-                    <button onClick={() => setCurrentTab('reports')} className={`font-bold text-sm ${currentTab === 'reports' ? 'text-primary' : 'text-slate-500'}`}>Reports ({reportedItems.length})</button>
-                    <button onClick={() => setCurrentTab('users')} className={`font-bold text-sm ${currentTab === 'users' ? 'text-primary' : 'text-slate-500'}`}>Users</button>
+            {/* Header / Tabs */}
+            <div className="p-4 bg-white dark:bg-slate-800 shadow-sm flex justify-between items-center z-10 w-full">
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1 mr-4">
+                    <button onClick={() => setCurrentTab('upload')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'upload' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Uploads</button>
+                    <button onClick={() => setCurrentTab('moderation')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'moderation' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Pending ({pendingItems.length})</button>
+                    <button onClick={() => setCurrentTab('reports')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'reports' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Reports ({reportedItems.length})</button>
+                    <button onClick={() => setCurrentTab('confessions')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'confessions' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Confessions</button>
+                    <button onClick={() => setCurrentTab('ads')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'ads' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Ads</button>
+                    <button onClick={() => setCurrentTab('users')} className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold ${currentTab === 'users' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>Users</button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                     <button onClick={() => setShowSettings(true)}>
-                        <Settings size={22} className="text-slate-400" />
+                        <Settings size={20} className="text-slate-400" />
                     </button>
                     <button onClick={() => onNavigate(AppView.DASHBOARD)}>
-                        <X size={24} className="text-slate-500" />
+                        <X size={20} className="text-slate-500" />
                     </button>
                 </div>
             </div>
@@ -278,10 +341,12 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6 w-full">
+            <div className="flex-1 overflow-y-auto p-4 w-full">
+
+                {/* --- UPLOADS TAB --- */}
                 {currentTab === 'upload' && (
                     <>
-                        <div className="mb-8 w-full">
+                        <div className="mb-8 w-full max-w-lg mx-auto">
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category:</label>
                             <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                                 {CATEGORIES.map(cat => (
@@ -289,7 +354,6 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                                 ))}
                             </div>
 
-                            {/* Description Input */}
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Description (Optional):</label>
                             <textarea
                                 className="w-full p-3 rounded-xl bg-white dark:bg-slate-800 border dark:border-slate-700 mb-4 text-sm dark:text-white"
@@ -299,7 +363,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                                 onChange={e => setDescription(e.target.value)}
                             />
 
-                            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 relative">
+                            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 relative hover:bg-slate-100 dark:hover:bg-slate-800 p-4 transition">
                                 <input type="file" accept="image/*,video/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} disabled={uploading} />
                                 {uploading ? <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div> : <Upload size={32} className="text-primary mb-2" />}
                                 <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">{uploading ? "Uploading..." : `Upload to '${selectedCategory}'`}</p>
@@ -309,6 +373,108 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                     </>
                 )}
 
+                {/* --- CONFESSIONS TAB (NEW) --- */}
+                {currentTab === 'confessions' && (
+                    <div className="space-y-4 max-w-2xl mx-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold dark:text-white flex items-center gap-2"><MessageSquare size={18} /> Moderate Confessions</h3>
+                            <button onClick={fetchConfessions} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-full"><RefreshCw size={14} /></button>
+                        </div>
+
+                        {loadingConfessions && <p className="text-center">Loading...</p>}
+                        {!loadingConfessions && confessions.length === 0 && <p className="text-center opacity-50">No confessions found.</p>}
+
+                        {confessions.map(item => (
+                            <div key={item.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.type === 'story' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                                        {item.type.toUpperCase()}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.is_approved ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                                        {item.is_approved ? 'LIVE' : 'HIDDEN'}
+                                    </span>
+                                </div>
+                                <p className="text-sm dark:text-white mb-4 whitespace-pre-wrap">{item.content}</p>
+                                <div className="flex gap-2">
+                                    {!item.is_approved ? (
+                                        <button onClick={() => handleConfessionAction(item.id, 'APPROVE')} className="flex-1 bg-green-500 text-white py-1.5 rounded-lg text-xs font-bold">Approve</button>
+                                    ) : (
+                                        <button onClick={() => handleConfessionAction(item.id, 'REJECT')} className="flex-1 bg-orange-500 text-white py-1.5 rounded-lg text-xs font-bold">Hide</button>
+                                    )}
+                                    <button onClick={() => handleConfessionAction(item.id, 'DELETE')} className="px-3 bg-red-500/10 text-red-500 rounded-lg"><Trash2 size={16} /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* --- ADS TAB (NEW) --- */}
+                {currentTab === 'ads' && (
+                    <div className="max-w-md mx-auto space-y-6">
+                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-2xl text-white mb-6">
+                            <h3 className="font-bold text-xl flex items-center gap-2 mb-2"><Megaphone /> Ad Manager</h3>
+                            <p className="text-xs opacity-80">Control monetization and ad frequency live.</p>
+                        </div>
+
+                        {/* Frequencies */}
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="font-bold mb-4 dark:text-white flex items-center gap-2"><Zap size={16} className="text-yellow-500" /> Frequency Config</h4>
+
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-slate-500 mb-1">Feed Ad Interval (Every X posts)</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        className="flex-1 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 p-2 rounded-lg dark:text-white"
+                                        placeholder="10"
+                                        defaultValue={adConfig.ad_feed_frequency || '10'}
+                                        id="feedf"
+                                    />
+                                    <button
+                                        onClick={() => handleAdUpdate('ad_feed_frequency', (document.getElementById('feedf') as HTMLInputElement).value)}
+                                        className="bg-primary text-white px-4 rounded-lg font-bold text-xs"
+                                    >Save</button>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-slate-500 mb-1">Stories Ad Interval (Every X slides)</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        className="flex-1 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 p-2 rounded-lg dark:text-white"
+                                        placeholder="5"
+                                        defaultValue={adConfig.ad_story_frequency || '5'}
+                                        id="storyf"
+                                    />
+                                    <button
+                                        onClick={() => handleAdUpdate('ad_story_frequency', (document.getElementById('storyf') as HTMLInputElement).value)}
+                                        className="bg-primary text-white px-4 rounded-lg font-bold text-xs"
+                                    >Save</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Banner Content */}
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="font-bold mb-4 dark:text-white flex items-center gap-2"><Tag size={16} className="text-pink-500" /> Native Ad Content</h4>
+                            <p className="text-xs text-slate-400 mb-2">JSON content for native banners.</p>
+                            <textarea
+                                className="w-full h-32 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 p-2 rounded-lg text-xs font-mono dark:text-white"
+                                defaultValue={adConfig.ad_banner_content || '{"title": "Sponsored", "text": "Buy cool stuff"}'}
+                                id="bancontent"
+                            />
+                            <button
+                                onClick={() => handleAdUpdate('ad_banner_content', (document.getElementById('bancontent') as HTMLTextAreaElement).value)}
+                                className="w-full mt-2 bg-slate-800 dark:bg-slate-700 text-white py-2 rounded-lg font-bold text-xs"
+                            >
+                                Update Ad JSON
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- REPORTS TAB --- */}
                 {currentTab === 'reports' && (
                     <div className="space-y-4">
                         {reportedItems.length === 0 && <p className="text-center text-slate-500 py-10">All clean! No reports. 🛡️</p>}
@@ -329,7 +495,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                     </div>
                 )}
 
-                {/* Re-use existing lists for Moderation/Users (Simplified for brevity in update, but would contain full logic) */}
+                {/* --- MODERATION TAB (Classic) --- */}
                 {currentTab === 'moderation' && (
                     <div className="space-y-4">
                         {pendingItems.length === 0 && <p className="text-center text-slate-500">No pending uploads.</p>}
@@ -353,6 +519,7 @@ export const AdminDashboard: React.FC<AdminProps> = ({ onNavigate }) => {
                     </div>
                 )}
 
+                {/* --- USERS TAB --- */}
                 {currentTab === 'users' && (
                     <div className="space-y-4">
                         <div className="flex justify-between items-center"><h3 className="font-bold text-slate-500">Users: {users.length}</h3><button onClick={fetchUsers}><RefreshCw size={16} /></button></div>

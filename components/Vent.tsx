@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { VentChat } from './VentChat';
 import { StoryList } from './confessions/StoryList';
 import { ConfessionCard } from './confessions/ConfessionCard';
 import { CreateConfessionModal } from './confessions/CreateConfessionModal';
 import { StoryViewer } from './confessions/StoryViewer';
-import { MessageSquare, Heart, Plus, Bell, RefreshCw, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { getUserProfile } from '../lib/profile';
 
 const API_BASE_URL = Capacitor.isNativePlatform()
   ? "https://bp-control.vercel.app/api"
   : "/api";
 
 export const Vent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'confessions'>('chat');
-
   // Confessions Data
   const [stories, setStories] = useState<any[]>([]);
   const [feed, setFeed] = useState<any[]>([]);
@@ -25,11 +21,9 @@ export const Vent: React.FC = () => {
   const [viewingStoryIndex, setViewingStoryIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (activeTab === 'confessions') {
-      fetchConfessions();
-      fetchStories();
-    }
-  }, [activeTab]);
+    fetchConfessions();
+    fetchStories();
+  }, []);
 
   const fetchConfessions = async () => {
     setLoading(true);
@@ -58,7 +52,7 @@ export const Vent: React.FC = () => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      alert("You must be logged in to post."); // Should show nice toast
+      alert("You must be logged in to post.");
       return;
     }
 
@@ -90,78 +84,53 @@ export const Vent: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-900 relative">
-      {/* Tab Switcher */}
-      <div className="bg-white dark:bg-slate-800 p-2 shadow-sm z-10">
-        <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-xl relative">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="h-full overflow-y-auto pb-20 relative">
+          {/* Stories Rail */}
+          <div className="pt-4 pb-2 mb-2 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800/50">
+            <StoryList stories={stories} onOpen={handleStoryTap} />
+          </div>
+
+          {/* Feed */}
+          <div className="px-4 space-y-4">
+            {loading && <div className="text-center py-8 text-slate-400 font-medium animate-pulse">Loading tea... ☕</div>}
+
+            {!loading && feed.length === 0 && (
+              <div className="text-center py-10 opacity-50">
+                <p className="text-4xl mb-2">🦗</p>
+                <p className="font-bold">It's quiet in here...</p>
+                <p className="text-xs">Be the first to confess!</p>
+              </div>
+            )}
+
+            {feed.map((item, idx) => (
+              <React.Fragment key={item.id}>
+                <ConfessionCard
+                  item={item}
+                  onReact={() => { }}
+                  onComment={() => { }}
+                />
+                {/* Native Ad Mockup at index 5 */}
+                {idx === 5 && (
+                  <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 mb-4 text-center shadow-sm">
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Sponsored</p>
+                    <p className="font-bold text-slate-700 dark:text-slate-200 mb-2">"My therapist told me to download this app."</p>
+                    <button className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 px-4 py-2 rounded-full font-bold shadow-sm hover:scale-105 transition">Read Their Story</button>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+            <div className="h-24"></div>
+          </div>
+
+          {/* FAB */}
           <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all relative z-10 flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}
+            onClick={() => setShowCreateModal(true)}
+            className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition z-30"
           >
-            <MessageSquare size={16} /> Chat Bot
-          </button>
-          <button
-            onClick={() => setActiveTab('confessions')}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all relative z-10 flex items-center justify-center gap-2 ${activeTab === 'confessions' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-500' : 'text-slate-500'}`}
-          >
-            <Zap size={16} /> Confessions
+            <Plus size={28} />
           </button>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-hidden relative">
-        {activeTab === 'chat' ? (
-          <VentChat />
-        ) : (
-          <div className="h-full overflow-y-auto pb-20 relative">
-            {/* Pull to Refresh hint could go here */}
-
-            {/* Stories Rail */}
-            <div className="pt-4 pb-2 mb-2 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800/50">
-              <StoryList stories={stories} onOpen={handleStoryTap} />
-            </div>
-
-            {/* Feed */}
-            <div className="px-4 space-y-4">
-              {loading && <div className="text-center py-8 text-slate-400 font-medium animate-pulse">Loading tea... ☕</div>}
-
-              {!loading && feed.length === 0 && (
-                <div className="text-center py-10 opacity-50">
-                  <p className="text-4xl mb-2">🦗</p>
-                  <p className="font-bold">It's quiet in here...</p>
-                  <p className="text-xs">Be the first to confess!</p>
-                </div>
-              )}
-
-              {feed.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  <ConfessionCard
-                    item={item}
-                    onReact={() => { }}
-                    onComment={() => { }}
-                  />
-                  {/* Native Ad Mockup at index 5 */}
-                  {idx === 5 && (
-                    <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 mb-4 text-center shadow-sm">
-                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Sponsored</p>
-                      <p className="font-bold text-slate-700 dark:text-slate-200 mb-2">"My therapist told me to download this app."</p>
-                      <button className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 px-4 py-2 rounded-full font-bold shadow-sm hover:scale-105 transition">Read Their Story</button>
-                    </div>
-                  )}
-                </React.Fragment>
-              ))}
-              <div className="h-24"></div>
-            </div>
-
-            {/* FAB */}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition z-30"
-            >
-              <Plus size={28} />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Modals */}
