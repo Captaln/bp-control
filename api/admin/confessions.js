@@ -4,71 +4,60 @@ export const config = {
     runtime: 'edge',
 };
 
+// Admin Service Client (Bypasses RLS)
 const supabase = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req) {
+    // CORS
     if (req.method === 'OPTIONS') {
-        return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, DELETE' } });
+        return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'POST' } });
+    }
+
+    if (req.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
     }
 
     try {
-        const body = req.method !== 'GET' ? await req.json() : {};
-        const url = new URL(req.url);
-        const password = url.searchParams.get('password') || body.password;
+        const { action, id, updates, password } = await req.json();
 
-        // Auth Check
+        // 1. Verify Admin Password (simple check)
         const { data: authData } = await supabase
             .from('admin_config')
             .select('value')
             .eq('key', 'admin_password')
             .single();
 
-        if (!password || !authData || authData.value !== password) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } });
+        if (!authData || authData.value !== password) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        // GET: List all confessions (even unapproved/reported)
-        if (req.method === 'GET') {
-            const { data, error } = await supabase
-                .from('confessions')
-                .select('*, report_count')
-                .order('created_at', { ascending: false })
-                .limit(50);
+        let result;
 
-            if (error) throw error;
-            return new Response(JSON.stringify(data), { headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } });
+        // 2. Perform Action
+        if (action === 'update' && id && updates) {
+            result = await supabase.from('confessions').update(updates).eq('id', id).select();
+        } else if (action === 'delete' && id) {
+            result = await supabase.from('confessions').delete().eq('id', id).select();
+        } else if (action === 'create' && updates) {
+            // updates contains content, type, etc.
+            // Force is_approved = true and insert
+            result = await supabase.from('confessions').insert({
+                ...updates,
+                is_approved: true,
+                created_at: new Date().toISOString()
+            }).select();
+        } else {
+            return new Response(JSON.stringify({ error: 'Invalid Action' }), { status: 400 });
         }
 
-        // POST: Approve/Reject (Toggle is_approved)
-        if (req.method === 'POST') {
-            const { id, action } = body;
-            // action: 'APPROVE', 'REJECT' (set is_approved = false)
+        if (result.error) throw result.error;
 
-            const isApproved = action === 'APPROVE';
-
-            const { error } = await supabase
-                .from('confessions')
-                .update({ is_approved: isApproved })
-                .eq('id', id);
-
-            if (error) throw error;
-            return new Response(JSON.stringify({ success: true }), { headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } });
-        }
-
-        // DELETE: Wipe
-        if (req.method === 'DELETE') {
-            const { id } = body;
-            const { error } = await supabase
-                .from('confessions')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-            return new Response(JSON.stringify({ success: true }), { headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' } });
-        }
+        return new Response(JSON.stringify({ success: true, data: result.data }), {
+            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
+        });
 
     } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });

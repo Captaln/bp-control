@@ -40,17 +40,19 @@ export default async function handler(req) {
 
         const { data, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            console.error('Feed Query Error:', error);
+            throw error;
+        }
 
-        // Custom Sort for 'Hot' could happen here in JS if we fetch more and shuffle, 
-        // but for V1 simple chronological is safest and fastest.
-        // We will inject Ads on the client side to avoid complex index logic here.
+        console.log(`Feed Request: Type=${type}, Count=${data?.length}`);
 
         return new Response(JSON.stringify(data), {
             headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
         });
 
     } catch (e) {
+        console.error('Feed API Exception:', e);
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 }

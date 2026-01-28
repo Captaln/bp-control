@@ -37,30 +37,56 @@ export const ConfessionsManagement = () => {
     };
 
     const handleAction = async (id: string, updates: any) => {
-        await supabase.from('confessions').update(updates).eq('id', id);
+        const password = prompt("Admin Password:");
+        if (!password) return;
+
+        await fetch('/api/admin/confessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update', id, updates, password })
+        });
         fetchConfessions();
+        // Optimistic update
+        setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Permanently delete?')) return;
-        await supabase.from('confessions').delete().eq('id', id);
+        const password = prompt("Admin Password:");
+        if (!password) return;
+
+        await fetch('/api/admin/confessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', id, password })
+        });
         fetchConfessions();
+        setConfessions(prev => prev.filter(c => c.id !== id));
     };
 
     const handleCreate = async () => {
         if (!newContent.trim()) return;
+        const password = prompt("Admin Password:");
+        if (!password) return;
 
-        // Create as "System" or anonymous admin
-        const { error } = await supabase.from('confessions').insert({
-            content: newContent,
-            type: newType,
-            background_style: 'midnight', // Default
-            is_approved: true, // Auto approve admin posts
-            user_id: (await supabase.auth.getUser()).data.user?.id
+        const res = await fetch('/api/admin/confessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'create',
+                updates: {
+                    content: newContent,
+                    type: newType,
+                    background_style: 'midnight'
+                },
+                password
+            })
         });
 
-        if (error) {
-            alert("Error: " + error.message);
+        const data = await res.json();
+
+        if (data.error) {
+            alert("Error: " + data.error);
         } else {
             setNewContent("");
             setIsCreating(false);

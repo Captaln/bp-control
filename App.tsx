@@ -40,9 +40,18 @@ function App() {
     }
   }, []);
 
-  // Initialize Push Notifications
+  // Anonymous Auth & Push Init
   useEffect(() => {
-    const initPush = async () => {
+    const initAuthAndPush = async () => {
+      // 1. Auth: Ensure we have a session (Anonymous)
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No session found, signing in anonymously...");
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) console.error("Anon Sign-In Failed:", error);
+      }
+
       try {
         // Request permission
         const permission = await PushNotifications.requestPermissions();
@@ -106,7 +115,7 @@ function App() {
       });
     };
 
-    initPush();
+    initAuthAndPush();
     addListeners();
 
   }, []);
