@@ -29,6 +29,14 @@ export const AgeGate = () => {
         // Initial Check (in case already logged in)
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) checkProfile(user.id);
+            else {
+                // If no user immediately, check local storage or wait
+                const localDob = localStorage.getItem('bp_user_dob');
+                if (!localDob) {
+                    // Wait 2s for auth, else show
+                    setTimeout(() => setIsVisible(true), 2000);
+                }
+            }
         });
 
         return () => subscription.unsubscribe();
@@ -38,29 +46,31 @@ export const AgeGate = () => {
         if (!dob) return;
         setLoading(true);
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
         // Calculate if 18+
         const birthDate = new Date(dob);
         const ageDifMs = Date.now() - birthDate.getTime();
-        const ageDate = new Date(ageDifMs); // miliseconds from epoch
+        const ageDate = new Date(ageDifMs);
         const age = Math.abs(ageDate.getUTCFullYear() - 1970);
         const is18 = age >= 18;
 
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                dob: dob,
-                is_18_plus: is18
-            })
-            .eq('id', user.id);
+        // Try Supabase Save
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    dob: dob,
+                    is_18_plus: is18
+                })
+                .eq('id', user.id);
 
-        if (error) {
-            alert("Error saving date of birth: " + error.message);
-        } else {
-            setIsVisible(false);
+            if (error) console.error("Profile update failed:", error);
         }
+
+        // Always save locally to dismiss modal
+        localStorage.setItem('bp_user_dob', dob);
+        localStorage.setItem('bp_is_18', String(is18));
+        setIsVisible(false);
         setLoading(false);
     };
 

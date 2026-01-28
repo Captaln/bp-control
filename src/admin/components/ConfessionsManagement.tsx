@@ -36,12 +36,15 @@ export const ConfessionsManagement = () => {
         setLoading(false);
     };
 
-    const [adminPassword, setAdminPassword] = useState('');
+    const [adminPassword, setAdminPassword] = useState(localStorage.getItem('bp_admin_pwd') || '');
 
     const getPassword = () => {
         if (adminPassword) return adminPassword;
         const pwd = prompt("Admin Password:");
-        if (pwd) setAdminPassword(pwd);
+        if (pwd) {
+            setAdminPassword(pwd);
+            localStorage.setItem('bp_admin_pwd', pwd);
+        }
         return pwd;
     };
 
@@ -57,7 +60,10 @@ export const ConfessionsManagement = () => {
         const data = await res.json();
         if (data.error) {
             alert("Action Failed: " + data.error);
-            if (data.error.includes("password")) setAdminPassword(''); // Reset if wrong
+            if (data.error.includes("password")) {
+                setAdminPassword('');
+                localStorage.removeItem('bp_admin_pwd');
+            }
         } else {
             fetchConfessions();
             setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
