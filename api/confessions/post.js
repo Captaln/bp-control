@@ -4,11 +4,6 @@ export const config = {
     runtime: 'edge',
 };
 
-const supabase = createClient(
-    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-);
-
 export default async function handler(req) {
     // CORS
     if (req.method === 'OPTIONS') {
@@ -20,9 +15,15 @@ export default async function handler(req) {
     }
 
     try {
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
-            throw new Error('Server Configuration Error: Missing Service Role Key');
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Server Config Error: Missing URL or Service Key');
         }
+
+        // Initialize inside handler to catch config errors
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
@@ -41,11 +42,6 @@ export default async function handler(req) {
         const now = Date.now();
         const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
 
-        if ((now - createdAt) < threeDaysMs) {
-            // Optional: Disable for now if it blocks testing
-            // return new Response(JSON.stringify({ error: 'Account too new. Must be 3 days old to post.' }), { status: 403 });
-        }
-
         // 2. Validate Payload
         const { content, type, background_style, allow_comments, allow_reactions, is_nsfw } = await req.json();
 
@@ -62,7 +58,7 @@ export default async function handler(req) {
         }
 
         // 2. Validate Content
-        if (!content || content.length > 5000) {
+        if (content.length > 5000) {
             return new Response(JSON.stringify({ error: 'Invalid content length' }), { status: 400 });
         }
 

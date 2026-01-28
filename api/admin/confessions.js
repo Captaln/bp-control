@@ -4,12 +4,6 @@ export const config = {
     runtime: 'edge',
 };
 
-// Admin Service Client (Bypasses RLS)
-const supabase = createClient(
-    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-);
-
 export default async function handler(req) {
     // CORS
     if (req.method === 'OPTIONS') {
@@ -21,9 +15,15 @@ export default async function handler(req) {
     }
 
     try {
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
-            return new Response(JSON.stringify({ error: 'Missing Env Var: SUPABASE_SERVICE_ROLE_KEY' }), { status: 500 });
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Missing Env: VITE_SUPABASE_URL or SERVICE_ROLE_KEY');
         }
+
+        // Admin Service Client (Bypasses RLS)
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
         const { action, id, updates, password } = await req.json();
 
@@ -46,12 +46,10 @@ export default async function handler(req) {
         } else if (action === 'delete' && id) {
             result = await supabase.from('confessions').delete().eq('id', id).select();
         } else if (action === 'create' && updates) {
-            // updates contains content, type, etc.
-            // Force is_approved = true and insert
             result = await supabase.from('confessions').insert({
                 ...updates,
                 is_approved: true,
-                is_nsfw: false, // Default to safe for admin posts
+                is_nsfw: false,
                 created_at: new Date().toISOString()
             }).select();
         } else {
