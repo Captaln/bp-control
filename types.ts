@@ -17,7 +17,8 @@ export enum AppView {
   // New Features
   SMILE = 'SMILE',
   ADMIN = 'ADMIN',
-  CREATOR = 'CREATOR'
+  CREATOR = 'CREATOR',
+  TERMS = 'TERMS'
 }
 
 export interface Message {

@@ -16,10 +16,32 @@ export default async function handler(req) {
 
     try {
         const url = new URL(req.url);
-        const type = url.searchParams.get('type') || 'feed'; // 'feed' (posts) or 'stories' (short)
-        const page = parseInt(url.searchParams.get('page') || '0');
-        const limit = 20;
-        const offset = page * limit;
+        // 0. Get User ID from Token to check AGE
+        const authHeader = req.headers.get('Authorization');
+        let is18Plus = false;
+
+        if (authHeader) {
+            const token = authHeader.replace('Bearer ', '');
+            const { data: { user } } = await supabase.auth.getUser(token);
+
+            if (user) {
+                // Fetch Profile Age
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('dob, is_18_plus')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile) {
+                    // Check DOB or override flag
+                    if (profile.is_18_plus) is18Plus = true;
+                    else if (profile.dob) {
+                        const age = new Date().getFullYear() - new Date(profile.dob).getFullYear();
+                        if (age >= 18) is18Plus = true;
+                    }
+                }
+            }
+        }
 
         let query = supabase
             .from('confessions')
@@ -29,8 +51,15 @@ export default async function handler(req) {
                 comments:confession_comments(count)
             `)
             .eq('is_approved', true)
-            .order('created_at', { ascending: false }) // Initial simple sort: Newest first
+            .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
+
+        // ALGORITHM: Safety Filter
+        if (!is18Plus) {
+            query = query.eq('is_nsfw', false); // Minors only see safe content
+        }
+        // If 18+, we show ALL (including NSFW). 
+        // We could add an ?nsfw_only=true param later if needed.
 
         if (type === 'stories') {
             query = query.eq('type', 'story');

@@ -57,6 +57,18 @@ export default async function handler(req) {
             return new Response(JSON.stringify({ error: 'Post too long (max 2000 chars)' }), { status: 400 });
         }
 
+        // 2. Validate Content
+        if (!content || content.length > 5000) {
+            return new Response(JSON.stringify({ error: 'Invalid content length' }), { status: 400 });
+        }
+
+        // Logic: Auto-approve Short Stories (Stories are inherently short/visual)
+        // Posts (Long) still require manual approval unless we add AI moderation later.
+        let isApproved = false;
+        if (type === 'story') {
+            isApproved = true; // "Free from approval" as requested
+        }
+
         // 3. Insert Confession
         const { data, error } = await supabase
             .from('confessions')
@@ -66,7 +78,9 @@ export default async function handler(req) {
                 type, // 'story' or 'post'
                 background_style: type === 'story' ? (background_style || 'default') : null,
                 allow_comments,
-                allow_reactions
+                allow_reactions,
+                is_nsfw: !!reqBody.is_nsfw, // New Flag
+                is_approved: isApproved
             })
             .select()
             .single();

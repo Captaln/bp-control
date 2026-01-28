@@ -21,6 +21,8 @@ import { Grounding } from './components/Grounding';
 import { Smile as SmileView } from './components/Smile';
 import { AdminDashboard } from './components/AdminDashboard';
 import { CreatorUpload } from './components/CreatorUpload';
+import { AgeGate } from './components/AgeGate';
+import { Terms } from './components/Terms';
 
 // Analytics
 import { startSession, endSession, trackTabView } from './services/analytics';
@@ -199,8 +201,12 @@ function App() {
         return <SmileView />;
       case AppView.ADMIN:
         return <AdminDashboard onNavigate={setCurrentView} />;
+
+      // ... (inside renderView)
       case AppView.CREATOR:
         return <CreatorUpload onClose={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.TERMS:
+        return <Terms onBack={() => setCurrentView(AppView.DASHBOARD)} />;
 
       default:
         return <Dashboard onNavigate={setCurrentView} />;
@@ -209,16 +215,19 @@ function App() {
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-900 relative max-w-md mx-auto shadow-2xl overflow-hidden pt-[env(safe-area-inset-top,20px)]">
+      <AgeGate />
       {/* App Content */}
       <main className="flex-1 overflow-hidden relative">
         {renderView()}
       </main>
 
       {/* Bottom Navigation */}
-      <Navigation currentView={currentView} onNavigate={(view) => {
-        setDeepLinkMemeId(null); // Clear deep link so we go back to full feed
-        setCurrentView(view);
-      }} />
+      {currentView !== AppView.TERMS && (
+        <Navigation currentView={currentView} onNavigate={(view) => {
+          setDeepLinkMemeId(null);
+          setCurrentView(view);
+        }} />
+      )}
     </div>
   );
 }

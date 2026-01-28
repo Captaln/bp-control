@@ -390,33 +390,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </p>
               </div>
 
-              <div className="bg-slate-800 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1 text-white font-bold text-sm">
-                    <Mail size={16} className="text-violet-400" /> Feedback
-                  </div>
-                  <p className="text-xs text-slate-500">Found a bug?</p>
+              <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-violet-400 bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20">
+                Email Us
+              </a>
+
+              <button onClick={() => onNavigate(AppView.TERMS)} className="w-full mt-3 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center gap-3 transition">
+                <div className="p-2 bg-slate-700 rounded-lg"><Shield size={18} className="text-slate-300" /></div>
+                <div className="text-left flex-1">
+                  <p className="font-bold text-white text-sm">Terms & Legal</p>
+                  <p className="text-xs text-slate-500">Read our policies</p>
                 </div>
-                <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-violet-400 bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20">
-                  Email Us
-                </a>
-              </div>
+              </button>
             </div>
 
             <div className="mt-6 text-center">
               <p className="text-[10px] text-slate-600">BP Control v2.5 (Guest Fix)</p>
             </div>
           </div>
-        </div>
+        </div >
       )}
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-slate-700">
-          <CheckCircle2 size={16} className="text-green-400" />
-          <span className="text-sm font-medium">{toastMessage}</span>
-        </div>
-      )}
-    </div>
+      {
+        toastMessage && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-slate-700">
+            <CheckCircle2 size={16} className="text-green-400" />
+            <span className="text-sm font-medium">{toastMessage}</span>
+          </div>
+        )
+      }
+    </div >
   );
 };
