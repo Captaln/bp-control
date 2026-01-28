@@ -21,6 +21,10 @@ export default async function handler(req) {
     }
 
     try {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
+            return new Response(JSON.stringify({ error: 'Missing Env Var: SUPABASE_SERVICE_ROLE_KEY' }), { status: 500 });
+        }
+
         const { action, id, updates, password } = await req.json();
 
         // 1. Verify Admin Password (simple check)
