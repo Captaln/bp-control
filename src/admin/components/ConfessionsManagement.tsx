@@ -36,8 +36,17 @@ export const ConfessionsManagement = () => {
         setLoading(false);
     };
 
+    const [adminPassword, setAdminPassword] = useState('');
+
+    const getPassword = () => {
+        if (adminPassword) return adminPassword;
+        const pwd = prompt("Admin Password:");
+        if (pwd) setAdminPassword(pwd);
+        return pwd;
+    };
+
     const handleAction = async (id: string, updates: any) => {
-        const password = prompt("Admin Password:");
+        const password = getPassword();
         if (!password) return;
 
         const res = await fetch('/api/admin/confessions', {
@@ -48,6 +57,7 @@ export const ConfessionsManagement = () => {
         const data = await res.json();
         if (data.error) {
             alert("Action Failed: " + data.error);
+            if (data.error.includes("password")) setAdminPassword(''); // Reset if wrong
         } else {
             fetchConfessions();
             setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
@@ -56,7 +66,7 @@ export const ConfessionsManagement = () => {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Permanently delete?')) return;
-        const password = prompt("Admin Password:");
+        const password = getPassword();
         if (!password) return;
 
         const res = await fetch('/api/admin/confessions', {
@@ -67,6 +77,7 @@ export const ConfessionsManagement = () => {
         const data = await res.json();
         if (data.error) {
             alert("Delete Failed: " + data.error);
+            if (data.error.includes("password")) setAdminPassword('');
         } else {
             fetchConfessions();
             setConfessions(prev => prev.filter(c => c.id !== id));
@@ -75,7 +86,7 @@ export const ConfessionsManagement = () => {
 
     const handleCreate = async () => {
         if (!newContent.trim()) return;
-        const password = prompt("Admin Password:");
+        const password = getPassword();
         if (!password) return;
 
         const res = await fetch('/api/admin/confessions', {

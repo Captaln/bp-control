@@ -51,7 +51,11 @@ function App() {
       if (!session) {
         console.log("No session found, signing in anonymously...");
         const { error } = await supabase.auth.signInAnonymously();
-        if (error) console.error("Anon Sign-In Failed:", error);
+        if (error) {
+          console.error("Anon Sign-In Failed:", error);
+          // CRITICAL: Alert user so they know why posting fails
+          alert(`Auth Error: ${error.message}. Please enable 'Anonymous Sign-ins' in your Supabase Auth Settings.`);
+        }
       }
 
       try {
