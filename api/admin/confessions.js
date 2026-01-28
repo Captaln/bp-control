@@ -47,6 +47,7 @@ export default async function handler(req) {
             result = await supabase.from('confessions').insert({
                 ...updates,
                 is_approved: true,
+                is_nsfw: false, // Default to safe for admin posts
                 created_at: new Date().toISOString()
             }).select();
         } else {

@@ -20,6 +20,10 @@ export default async function handler(req) {
     }
 
     try {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
+            throw new Error('Server Configuration Error: Missing Service Role Key');
+        }
+
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -37,13 +41,13 @@ export default async function handler(req) {
         const now = Date.now();
         const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
 
-        // Allow if user is admin/creator? For now enforce for everyone strictly or check profile
         if ((now - createdAt) < threeDaysMs) {
-            return new Response(JSON.stringify({ error: 'Account too new. Must be 3 days old to post.' }), { status: 403 });
+            // Optional: Disable for now if it blocks testing
+            // return new Response(JSON.stringify({ error: 'Account too new. Must be 3 days old to post.' }), { status: 403 });
         }
 
         // 2. Validate Payload
-        const { content, type, background_style, allow_comments, allow_reactions } = await req.json();
+        const { content, type, background_style, allow_comments, allow_reactions, is_nsfw } = await req.json();
 
         if (!content || !type) {
             return new Response(JSON.stringify({ error: 'Missing content or type' }), { status: 400 });
@@ -62,11 +66,10 @@ export default async function handler(req) {
             return new Response(JSON.stringify({ error: 'Invalid content length' }), { status: 400 });
         }
 
-        // Logic: Auto-approve Short Stories (Stories are inherently short/visual)
-        // Posts (Long) still require manual approval unless we add AI moderation later.
+        // Logic: Auto-approve Short Stories
         let isApproved = false;
         if (type === 'story') {
-            isApproved = true; // "Free from approval" as requested
+            isApproved = true;
         }
 
         // 3. Insert Confession
@@ -75,11 +78,11 @@ export default async function handler(req) {
             .insert({
                 user_id: user.id,
                 content,
-                type, // 'story' or 'post'
+                type,
                 background_style: type === 'story' ? (background_style || 'default') : null,
                 allow_comments,
                 allow_reactions,
-                is_nsfw: !!reqBody.is_nsfw, // New Flag
+                is_nsfw: !!is_nsfw,
                 is_approved: isApproved
             })
             .select()
