@@ -55,7 +55,16 @@ export const Vent: React.FC = () => {
     const { supabase } = await import('@/lib/supabase');
     const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
+    let validSession = session;
+    if (!validSession) {
+      // Try one last time to auto-login
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (!error && data.session) {
+        validSession = data.session;
+      }
+    }
+
+    if (!validSession) {
       alert("You must be logged in to post.");
       return;
     }
@@ -64,7 +73,7 @@ export const Vent: React.FC = () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${validSession.access_token}`
       },
       body: JSON.stringify(payload)
     });

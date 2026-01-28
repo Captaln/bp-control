@@ -7,23 +7,31 @@ export const AgeGate = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const checkAge = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('dob')
-                    .eq('id', user.id)
-                    .single();
+        const checkProfile = async (userId: string) => {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('dob')
+                .eq('id', userId)
+                .single();
 
-                // Show if no DOB set
-                if (!profile?.dob) {
-                    setIsVisible(true);
-                }
+            if (!profile?.dob) {
+                setIsVisible(true);
             }
         };
-        // Small delay to ensure auth is settled (App.tsx does init)
-        setTimeout(checkAge, 1000);
+
+        // Listen for Auth Changes (e.g. Anon Login success)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                checkProfile(session.user.id);
+            }
+        });
+
+        // Initial Check (in case already logged in)
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) checkProfile(user.id);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const handleSave = async () => {

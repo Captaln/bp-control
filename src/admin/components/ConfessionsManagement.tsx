@@ -40,14 +40,18 @@ export const ConfessionsManagement = () => {
         const password = prompt("Admin Password:");
         if (!password) return;
 
-        await fetch('/api/admin/confessions', {
+        const res = await fetch('/api/admin/confessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'update', id, updates, password })
         });
-        fetchConfessions();
-        // Optimistic update
-        setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+        const data = await res.json();
+        if (data.error) {
+            alert("Action Failed: " + data.error);
+        } else {
+            fetchConfessions();
+            setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -55,13 +59,18 @@ export const ConfessionsManagement = () => {
         const password = prompt("Admin Password:");
         if (!password) return;
 
-        await fetch('/api/admin/confessions', {
+        const res = await fetch('/api/admin/confessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'delete', id, password })
         });
-        fetchConfessions();
-        setConfessions(prev => prev.filter(c => c.id !== id));
+        const data = await res.json();
+        if (data.error) {
+            alert("Delete Failed: " + data.error);
+        } else {
+            fetchConfessions();
+            setConfessions(prev => prev.filter(c => c.id !== id));
+        }
     };
 
     const handleCreate = async () => {

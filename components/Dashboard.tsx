@@ -381,18 +381,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
               <hr className="border-slate-700 my-2" />
 
-              <div className="bg-slate-800 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2 text-white font-bold text-sm">
-                  <Shield size={16} className="text-teal-400" /> Privacy & Data
+              <div className="bg-slate-800 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 text-white font-bold text-sm">
+                    <Mail size={16} className="text-violet-400" /> Feedback
+                  </div>
+                  <p className="text-xs text-slate-500">Found a bug?</p>
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Your data stays on your device. We don't track or sell anything.
-                </p>
+                <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-violet-400 bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20">
+                  Email Us
+                </a>
               </div>
-
-              <a href="mailto:avirashinz@proton.me" className="text-xs font-bold text-violet-400 bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20">
-                Email Us
-              </a>
 
               <button onClick={() => onNavigate(AppView.TERMS)} className="w-full mt-3 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center gap-3 transition">
                 <div className="p-2 bg-slate-700 rounded-lg"><Shield size={18} className="text-slate-300" /></div>
