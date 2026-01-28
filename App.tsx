@@ -23,6 +23,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { CreatorUpload } from './components/CreatorUpload';
 import { AgeGate } from './components/AgeGate';
 import { Terms } from './components/Terms';
+import { MyActivity } from './components/MyActivity';
 
 // Analytics
 import { startSession, endSession, trackTabView } from './services/analytics';
@@ -211,6 +212,8 @@ function App() {
         return <CreatorUpload onClose={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.TERMS:
         return <Terms onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.MY_ACTIVITY:
+        return <MyActivity onBack={() => setCurrentView(AppView.DASHBOARD)} />;
 
       default:
         return <Dashboard onNavigate={setCurrentView} />;

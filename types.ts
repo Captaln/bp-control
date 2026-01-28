@@ -18,7 +18,8 @@ export enum AppView {
   SMILE = 'SMILE',
   ADMIN = 'ADMIN',
   CREATOR = 'CREATOR',
-  TERMS = 'TERMS'
+  TERMS = 'TERMS',
+  MY_ACTIVITY = 'MY_ACTIVITY'
 }
 
 export interface Message {

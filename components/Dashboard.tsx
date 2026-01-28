@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { AppView, MoodLog } from '../types';
-import { Flame, Activity, BarChart2, Gamepad2, Settings, Trash2, X, AlertTriangle, CheckCircle2, Shield, Mail, TrendingUp, MessageSquare, Wind, Smile, Sparkles, Zap, ArrowRight, Upload } from 'lucide-react';
+import { Flame, Activity, BarChart2, Gamepad2, Settings, Trash2, X, AlertTriangle, CheckCircle2, Shield, Mail, TrendingUp, MessageSquare, Wind, Smile, Sparkles, Zap, ArrowRight, Upload, History } from 'lucide-react';
 import { getUserProfile } from '../lib/profile';
 
 // API CONSTANTS
@@ -194,6 +194,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <Upload size={20} className="text-white" />
             </button>
           )}
+          <button onClick={() => onNavigate(AppView.MY_ACTIVITY)} className="p-2.5 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl">
+            <History size={20} className="text-slate-400" />
+          </button>
           <button onClick={() => setShowSettings(true)} className="p-2.5 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl">
             <Settings size={20} className="text-slate-400" />
           </button>

@@ -63,6 +63,9 @@ export default async function handler(req) {
 
         if (type === 'stories') {
             query = query.eq('type', 'story');
+            // 24 Hour Limit for Stories
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            query = query.gt('created_at', yesterday);
         } else {
             query = query.eq('type', 'post');
         }
