@@ -112,7 +112,9 @@ export default function AdminApp() {
                 {currentView === 'USERS' && <UserManagement />}
                 {currentView === 'CONTENT' && <ContentManagement />}
                 {currentView === 'NOTIFICATIONS' && <NotificationCenter />}
-                {currentView === 'CONFESSIONS' && <ConfessionsManagement />}
+                {currentView === 'NOTIFICATIONS' && <NotificationCenter />}
+                {currentView === 'CONFESSIONS' && <ConfessionsManagement session={session} />}
+                {currentView === 'ADS' && <AdsManagement />}
                 {currentView === 'ADS' && <AdsManagement />}
                 {currentView === 'SETTINGS' && (
                     <div className="p-8 border border-red-900/30 rounded-2xl bg-red-900/10">

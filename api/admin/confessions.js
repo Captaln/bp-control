@@ -25,17 +25,19 @@ export default async function handler(req) {
         // Admin Service Client (Bypasses RLS)
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        const { action, id, updates, password } = await req.json();
+        // 1. Verify Admin Access (Token + Email Whitelist)
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization Header' }), { status: 401 });
+        }
 
-        // 1. Verify Admin Password (simple check)
-        const { data: authData } = await supabase
-            .from('admin_config')
-            .select('value')
-            .eq('key', 'admin_password')
-            .single();
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-        if (!authData || authData.value !== password) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        const ADMIN_EMAILS = ['shivaram0663@gmail.com', 'admin@bpcontrol.com'];
+
+        if (authError || !user || !ADMIN_EMAILS.includes(user.email)) {
+            return new Response(JSON.stringify({ error: 'Unauthorized: Admin Access Only' }), { status: 401 });
         }
 
         let result;

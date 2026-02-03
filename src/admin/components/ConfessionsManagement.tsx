@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Check, X, Trash2, StopCircle, RefreshCw, MessageSquare, Plus, Send } from 'lucide-react';
 
-export const ConfessionsManagement = () => {
+export const ConfessionsManagement = ({ session }: { session: any }) => {
     const [confessions, setConfessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
@@ -36,84 +36,49 @@ export const ConfessionsManagement = () => {
         setLoading(false);
     };
 
-    const [adminPassword, setAdminPassword] = useState(localStorage.getItem('bp_admin_pwd') || '');
-
-    const getPassword = () => {
-        if (adminPassword) return adminPassword;
-        const pwd = prompt("Admin Password:");
-        if (pwd) {
-            setAdminPassword(pwd);
-            localStorage.setItem('bp_admin_pwd', pwd);
+    const callAdminApi = async (body: any) => {
+        try {
+            const res = await fetch('/api/admin/confessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'API Error');
+            return data;
+        } catch (e: any) {
+            alert(e.message);
+            return null;
         }
-        return pwd;
     };
 
     const handleAction = async (id: string, updates: any) => {
-        const password = getPassword();
-        if (!password) return;
-
-        const res = await fetch('/api/admin/confessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'update', id, updates, password })
-        });
-        const data = await res.json();
-        if (data.error) {
-            alert("Action Failed: " + data.error);
-            if (data.error.includes("password")) {
-                setAdminPassword('');
-                localStorage.removeItem('bp_admin_pwd');
-            }
-        } else {
-            fetchConfessions();
-            setConfessions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-        }
+        await callAdminApi({ action: 'update', id, updates });
+        fetchConfessions();
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Permanently delete?')) return;
-        const password = getPassword();
-        if (!password) return;
-
-        const res = await fetch('/api/admin/confessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete', id, password })
-        });
-        const data = await res.json();
-        if (data.error) {
-            alert("Delete Failed: " + data.error);
-            if (data.error.includes("password")) setAdminPassword('');
-        } else {
-            fetchConfessions();
-            setConfessions(prev => prev.filter(c => c.id !== id));
-        }
+        await callAdminApi({ action: 'delete', id });
+        fetchConfessions();
     };
 
     const handleCreate = async () => {
         if (!newContent.trim()) return;
-        const password = getPassword();
-        if (!password) return;
 
-        const res = await fetch('/api/admin/confessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'create',
-                updates: {
-                    content: newContent,
-                    type: newType,
-                    background_style: 'midnight'
-                },
-                password
-            })
+        const data = await callAdminApi({
+            action: 'create',
+            updates: {
+                content: newContent,
+                type: newType,
+                background_style: 'midnight'
+            }
         });
 
-        const data = await res.json();
-
-        if (data.error) {
-            alert("Error: " + data.error);
-        } else {
+        if (data && data.success) {
             setNewContent("");
             setIsCreating(false);
             fetchConfessions();

@@ -39,7 +39,10 @@ export const Vent: React.FC = () => {
       const res = await fetch(`${API_BASE_URL}/confessions/feed?type=post`);
       const data = await res.json();
       if (Array.isArray(data)) setFeed(data);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e: any) {
+      console.error(e);
+      // alert("Feed Error: " + e.message); // Uncommon for prod, but useful for debug
+    } finally { setLoading(false); }
   };
 
   const fetchStories = async () => {
@@ -122,6 +125,10 @@ export const Vent: React.FC = () => {
                 <p className="text-4xl mb-2">🦗</p>
                 <p className="font-bold">It's quiet in here...</p>
                 <p className="text-xs">Be the first to confess!</p>
+                {/* Debug Info */}
+                <p className="text-[10px] text-red-500 mt-4 max-w-[200px] mx-auto hidden group-hover:block">
+                  If you see this, the API returned 0 items.
+                </p>
               </div>
             )}
 

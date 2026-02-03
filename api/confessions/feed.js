@@ -16,6 +16,11 @@ export default async function handler(req) {
 
     try {
         const url = new URL(req.url);
+        const type = url.searchParams.get('type') || 'feed';
+        const page = parseInt(url.searchParams.get('page') || '0');
+        const limit = 20;
+        const offset = page * limit;
+
         // 0. Get User ID from Token to check AGE
         const authHeader = req.headers.get('Authorization');
         let is18Plus = false;
@@ -45,11 +50,7 @@ export default async function handler(req) {
 
         let query = supabase
             .from('confessions')
-            .select(`
-                *,
-                reactions:confession_reactions(count),
-                comments:confession_comments(count)
-            `)
+            .select('*')
             .eq('is_approved', true)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
